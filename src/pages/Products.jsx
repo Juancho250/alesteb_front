@@ -1,31 +1,30 @@
 import { useEffect, useState } from "react";
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  X,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 
 export default function Products() {
   const [products, setProducts] = useState([]);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("");
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState(null);
+
+  const navigate = useNavigate();
 
   const loadProducts = async () => {
     const res = await api.get("/products");
     setProducts(res.data);
   };
 
-  const createProduct = async (e) => {
-    e.preventDefault();
-    await api.post("/products", {
-      name,
-      price: Number(price),
-      stock: Number(stock),
-    });
-    setName("");
-    setPrice("");
-    setStock("");
+  useEffect(() => {
     loadProducts();
-  };
+  }, []);
 
   const deleteProduct = async (id) => {
     if (!confirm("¿Eliminar producto?")) return;
@@ -33,54 +32,47 @@ export default function Products() {
     loadProducts();
   };
 
-  useEffect(() => {
+  const openEdit = (product) => {
+    setCurrent(product);
+    setOpen(true);
+  };
+
+  const closeModal = () => {
+    setOpen(false);
+    setCurrent(null);
+  };
+
+  const updateProduct = async (e) => {
+    e.preventDefault();
+    await api.put(`/products/${current.id}`, {
+      name: current.name,
+      price: Number(current.price),
+      stock: Number(current.stock),
+      category: current.category,
+    });
+    closeModal();
     loadProducts();
-  }, []);
+  };
 
   return (
-    <div className="pb-16">
+    <div className="pb-16 bg-gray-50 min-h-screen">
       <Header />
 
-      <main className="p-4 space-y-6">
-        {/* FORM */}
-        <form
-          onSubmit={createProduct}
-          className="bg-white rounded-2xl shadow p-4 space-y-3"
-        >
-          <h2 className="font-semibold text-lg">Nuevo producto</h2>
+      <main className="p-4 space-y-4">
+        {/* HEADER */}
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-bold">Productos</h2>
 
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Nombre"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Precio"
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-          />
-
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Stock"
-            type="number"
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
-            required
-          />
-
-          <button className="w-full bg-blue-600 text-white py-3 rounded-xl">
-            Guardar
+          <button
+            onClick={() => navigate("/products/new")}
+            className="flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-xl"
+          >
+            <Plus size={16} />
+            Nuevo
           </button>
-        </form>
+        </div>
 
-        {/* LIST */}
+        {/* LISTADO */}
         <div className="space-y-3">
           {products.map((p) => (
             <div
@@ -92,18 +84,113 @@ export default function Products() {
                 <p className="text-sm text-gray-500">
                   ${p.price} · Stock: {p.stock}
                 </p>
+                {p.category && (
+                  <p className="text-xs text-gray-400">
+                    Categoría: {p.category}
+                  </p>
+                )}
               </div>
 
-              <button
-                onClick={() => deleteProduct(p.id)}
-                className="text-red-500 text-sm"
-              >
-                Eliminar
-              </button>
+              {/* ACCIONES */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => openEdit(p)}
+                  className="text-blue-600"
+                >
+                  <Pencil size={18} />
+                </button>
+
+                <button
+                  onClick={() => deleteProduct(p.id)}
+                  className="text-red-500"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </main>
+
+      {/* MODAL EDIT */}
+      {open && current && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 relative">
+            <button
+              onClick={closeModal}
+              className="absolute top-3 right-3 text-gray-500"
+            >
+              <X size={18} />
+            </button>
+
+            <h3 className="text-lg font-bold mb-4">
+              Editar producto
+            </h3>
+
+            <form
+              onSubmit={updateProduct}
+              className="space-y-3"
+            >
+              <input
+                className="w-full border p-3 rounded-xl"
+                placeholder="Nombre"
+                value={current.name}
+                onChange={(e) =>
+                  setCurrent({
+                    ...current,
+                    name: e.target.value,
+                  })
+                }
+                required
+              />
+
+              <input
+                type="number"
+                className="w-full border p-3 rounded-xl"
+                placeholder="Precio"
+                value={current.price}
+                onChange={(e) =>
+                  setCurrent({
+                    ...current,
+                    price: e.target.value,
+                  })
+                }
+                required
+              />
+
+              <input
+                type="number"
+                className="w-full border p-3 rounded-xl"
+                placeholder="Stock"
+                value={current.stock}
+                onChange={(e) =>
+                  setCurrent({
+                    ...current,
+                    stock: e.target.value,
+                  })
+                }
+                required
+              />
+
+              <input
+                className="w-full border p-3 rounded-xl"
+                placeholder="Categoría (opcional)"
+                value={current.category || ""}
+                onChange={(e) =>
+                  setCurrent({
+                    ...current,
+                    category: e.target.value,
+                  })
+                }
+              />
+
+              <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold">
+                Guardar cambios
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>

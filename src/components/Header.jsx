@@ -5,7 +5,7 @@ export default function Header() {
       <button
         onClick={() => {
           localStorage.removeItem("token");
-          window.location.href = "/login";
+          window.location.href = "/";
         }}
         className="text-red-500 text-sm"
       >
