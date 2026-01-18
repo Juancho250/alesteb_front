@@ -84,11 +84,24 @@ export default function ProductCreate() {
 
           {/* IMAGEN */}
           <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => setImages([...e.target.files])}
-          />
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleImages}
+            />
+
+            {preview.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                {preview.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    className="w-full h-24 object-cover rounded-xl border"
+                  />
+                ))}
+              </div>
+            )}
+
 
 
 
