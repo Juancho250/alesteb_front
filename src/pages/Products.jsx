@@ -80,7 +80,11 @@ export default function Products() {
               className="bg-white rounded-xl shadow p-4 flex justify-between items-center"
             >
               <div>
-                <p className="font-medium">{p.name}</p>
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  className="w-full h-40 object-cover rounded-xl mb-3"
+                />
                 <p className="text-sm text-gray-500">
                   ${p.price} · Stock: {p.stock}
                 </p>

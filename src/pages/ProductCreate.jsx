@@ -9,29 +9,31 @@ export default function ProductCreate() {
   const [form, setForm] = useState({
     name: "",
     price: "",
-    cost: "",
     stock: "",
-    min_stock: 5,
     category: "",
   });
 
+  const [images, setImages] = useState([]);
+
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const submit = async (e) => {
     e.preventDefault();
 
-    await api.post("/products", {
-      ...form,
-      price: Number(form.price),
-      cost: Number(form.cost),
-      stock: Number(form.stock),
-      min_stock: Number(form.min_stock),
-    });
+    const data = new FormData();
+      data.append("name", form.name);
+      data.append("price", form.price);
+      data.append("stock", form.stock);
+      data.append("category", form.category);
+
+      images.forEach((img) => {
+        data.append("images", img);
+      });
+
+      await api.post("/products", data);
+
 
     navigate("/products");
   };
@@ -40,14 +42,12 @@ export default function ProductCreate() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="p-4">
+      <main className="p-4 max-w-xl mx-auto">
         <form
           onSubmit={submit}
           className="bg-white rounded-2xl shadow p-5 space-y-4"
         >
-          <h2 className="text-lg font-bold">
-            Registrar producto
-          </h2>
+          <h2 className="text-lg font-bold">Registrar producto</h2>
 
           <input
             name="name"
@@ -59,7 +59,7 @@ export default function ProductCreate() {
 
           <input
             name="category"
-            placeholder="Categoría (ej: Bebidas)"
+            placeholder="Categoría"
             className="w-full border p-3 rounded-xl"
             onChange={handleChange}
           />
@@ -67,52 +67,34 @@ export default function ProductCreate() {
           <input
             name="price"
             type="number"
-            placeholder="Precio de venta"
+            placeholder="Precio"
             className="w-full border p-3 rounded-xl"
             onChange={handleChange}
             required
-          />
-
-          <input
-            name="cost"
-            type="number"
-            placeholder="Costo (opcional)"
-            className="w-full border p-3 rounded-xl"
-            onChange={handleChange}
           />
 
           <input
             name="stock"
             type="number"
-            placeholder="Stock inicial"
+            placeholder="Stock"
             className="w-full border p-3 rounded-xl"
             onChange={handleChange}
             required
           />
 
+          {/* IMAGEN */}
           <input
-            name="min_stock"
-            type="number"
-            placeholder="Stock mínimo"
-            className="w-full border p-3 rounded-xl"
-            onChange={handleChange}
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={(e) => setImages([...e.target.files])}
           />
 
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/products")}
-              className="w-1/2 border py-3 rounded-xl"
-            >
-              Cancelar
-            </button>
 
-            <button
-              className="w-1/2 bg-blue-600 text-white py-3 rounded-xl"
-            >
-              Guardar
-            </button>
-          </div>
+
+          <button className="w-full bg-blue-600 text-white py-3 rounded-xl">
+            Guardar producto
+          </button>
         </form>
       </main>
     </div>
