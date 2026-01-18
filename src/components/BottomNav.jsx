@@ -1,13 +1,19 @@
 import { NavLink } from "react-router-dom";
-import { Home, Package, ShoppingBag } from "lucide-react";
+import {
+  Home,
+  Package,
+  ShoppingBag,
+  Settings
+} from "lucide-react";
 
 export default function BottomNav() {
   const base =
-    "flex-1 py-2 flex flex-col items-center text-gray-500 text-xs";
+    "flex-1 py-2 flex flex-col items-center text-gray-500 text-xs transition";
   const active = "text-blue-600 font-semibold";
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex z-50">
+      
       <NavLink
         to="/"
         className={({ isActive }) => `${base} ${isActive ? active : ""}`}
@@ -31,7 +37,16 @@ export default function BottomNav() {
         <ShoppingBag size={20} />
         Ventas
       </NavLink>
+
+      {/* NUEVO BOTÓN */}
+      <NavLink
+        to="/tools"
+        className={({ isActive }) => `${base} ${isActive ? active : ""}`}
+      >
+        <Settings size={20} />
+        Herramientas
+      </NavLink>
+
     </nav>
   );
 }
-
