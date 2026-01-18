@@ -13,6 +13,7 @@ export default function ProductCreate() {
     category: "",
   });
 
+  const [preview, setPreview] = useState([]);
   const [images, setImages] = useState([]);
 
   const handleChange = (e) => {
@@ -37,6 +38,23 @@ export default function ProductCreate() {
 
     navigate("/products");
   };
+
+  const handleImages = (e) => {
+    const files = Array.from(e.target.files);
+
+    setImages((prev) => [...prev, ...files]);
+
+    const previews = files.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    setPreview((prev) => [...prev, ...previews]);
+
+    // 🔥 reset input para permitir volver a elegir
+    e.target.value = "";
+  };
+
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,17 +108,26 @@ export default function ProductCreate() {
               onChange={handleImages}
             />
 
-            {preview.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                {preview.map((src, i) => (
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              {preview.map((src, i) => (
+                <div key={i} className="relative">
                   <img
-                    key={i}
                     src={src}
                     className="w-full h-24 object-cover rounded-xl border"
                   />
-                ))}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreview(preview.filter((_, index) => index !== i));
+                      setImages(images.filter((_, index) => index !== i));
+                    }}
+                    className="absolute top-1 right-1 bg-black/70 text-white rounded-full w-6 h-6 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
 
 
 
