@@ -206,25 +206,33 @@ export default function Banners() {
 
   const loadBanners = async () => {
     try {
-      const res = await api.get("/banners");
-      setBanners(res.data);
+        const res = await api.get("/banners");
+        setBanners(res.data);
+        localStorage.setItem("banners_cache", JSON.stringify(res.data));
     } catch (error) {
-      console.error("Error cargando banners:", error);
+        console.warn("Error cargando banners, usando cache local", error);
+        const cached = localStorage.getItem("banners_cache");
+        if (cached) setBanners(JSON.parse(cached));
     }
-  };
+    };
 
-  const toggleActive = async (banner) => {
+    const toggleActive = async (banner) => {
     try {
-      // Usamos JSON simple aquí ya que no hay cambio de imagen
-      await api.put(`/banners/${banner.id}`, {
+        await api.put(`/banners/${banner.id}`, {
         ...banner,
         is_active: !banner.is_active,
-      });
-      loadBanners();
+        });
+        loadBanners();
     } catch (error) {
-      console.error("Error al cambiar estado:", error);
+        console.warn("No se pudo cambiar estado, actualizando localmente");
+        const updated = banners.map((b) =>
+        b.id === banner.id ? { ...b, is_active: !b.is_active } : b
+        );
+        setBanners(updated);
+        localStorage.setItem("banners_cache", JSON.stringify(updated));
     }
-  };
+    };
+
 
   const deleteBanner = async (id) => {
     if (!confirm("¿Eliminar este banner permanentemente?")) return;

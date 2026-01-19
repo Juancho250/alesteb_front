@@ -3,7 +3,8 @@ import {
   Home,
   Package,
   ShoppingBag,
-  Settings
+  Settings,
+  Users // Importamos el icono para Clientes
 } from "lucide-react";
 
 export default function BottomNav() {
@@ -30,6 +31,15 @@ export default function BottomNav() {
         Productos
       </NavLink>
 
+      {/* NUEVA OPCIÓN: CLIENTES */}
+      <NavLink
+        to="/users"
+        className={({ isActive }) => `${base} ${isActive ? active : ""}`}
+      >
+        <Users size={20} />
+        Clientes
+      </NavLink>
+
       <NavLink
         to="/sales"
         className={({ isActive }) => `${base} ${isActive ? active : ""}`}
@@ -38,7 +48,6 @@ export default function BottomNav() {
         Ventas
       </NavLink>
 
-      {/* NUEVO BOTÓN */}
       <NavLink
         to="/tools"
         className={({ isActive }) => `${base} ${isActive ? active : ""}`}

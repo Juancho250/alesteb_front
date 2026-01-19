@@ -8,6 +8,7 @@ import Sales from "./pages/Sales";
 import SalesHistory from "./pages/SalesHistory";
 import Tools from "./pages/Tools";
 import Banners from "./pages/tools/Banners";
+import Users from "./pages/Users";
 /* import Categories from "./pages/tools/Categories"; */
 /* import ProductImages from "./pages/tools/ProductImages"; */
 /* import Promotions from "./pages/tools/Promotions"; */
@@ -63,6 +64,15 @@ export default function App() {
           element={
             <PrivateRoute>
               <SalesHistory />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/users"
+          element={
+            <PrivateRoute>
+              <Users />
             </PrivateRoute>
           }
         />
