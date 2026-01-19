@@ -9,16 +9,15 @@ import SalesHistory from "./pages/SalesHistory";
 import Tools from "./pages/Tools";
 import Banners from "./pages/tools/Banners";
 import Users from "./pages/Users";
-/* import Categories from "./pages/tools/Categories"; */
-/* import ProductImages from "./pages/tools/ProductImages"; */
-/* import Promotions from "./pages/tools/Promotions"; */
-/* import Settings from "./pages/tools/Settings"; */
+import Finance from "./pages/Finance";
+
 import PrivateRoute from "./routes/PrivateRoute";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
 
@@ -77,12 +76,33 @@ export default function App() {
           }
         />
 
-        <Route path="/tools" element={<Tools />} />
-        <Route path="/tools/banners" element={<Banners />} />{/* 
-        <Route path="/tools/categories" element={<Categories />} />
-        <Route path="/tools/images" element={<ProductImages />} />
-        <Route path="/tools/promotions" element={<Promotions />} />
-        <Route path="/tools/settings" element={<Settings />} /> */}
+        {/* TOOLS */}
+        <Route
+          path="/tools"
+          element={
+            <PrivateRoute>
+              <Tools />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/tools/banners"
+          element={
+            <PrivateRoute>
+              <Banners />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/tools/finance"
+          element={
+            <PrivateRoute>
+              <Finance />
+            </PrivateRoute>
+          }
+        />
 
       </Routes>
     </BrowserRouter>

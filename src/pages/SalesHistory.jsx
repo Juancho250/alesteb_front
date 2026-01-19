@@ -128,7 +128,11 @@ export default function SalesHistory() {
                     <p className="font-bold text-slate-700 uppercase text-xs">{item.name}</p>
                     <p className="text-gray-400">Cant: {item.quantity}</p>
                   </div>
-                  <span className="font-bold text-slate-800">${(item.price * item.quantity).toLocaleString()}</span>
+                  <span className="font-bold text-slate-800">
+                    ${(item.unit_price * item.quantity).toLocaleString()}
+                  </span>
+
+
                 </div>
               ))}
             </div>
@@ -189,8 +193,9 @@ export default function SalesHistory() {
                 <tr key={i} className="border-b border-gray-100">
                   <td className="py-3 font-bold uppercase">{item.name}</td>
                   <td className="py-3 text-center">{item.quantity}</td>
-                  <td className="py-3 text-right">${Number(item.price).toLocaleString()}</td>
-                  <td className="py-3 text-right">${(item.price * item.quantity).toLocaleString()}</td>
+                  <td className="py-3 text-right">${Number(item.unit_price).toLocaleString()}</td>
+                  <td className="py-3 text-right">${(item.unit_price * item.quantity).toLocaleString()}</td>
+
                 </tr>
               ))}
             </tbody>

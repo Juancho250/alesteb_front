@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import {
+import { 
   Image,
   Layers,
   Tags,
   Sliders,
-  Settings
+  Settings,
+  Wallet
 } from "lucide-react";
 import api from "../services/api";
 import Header from "../components/Header";
@@ -54,6 +55,13 @@ export default function Tools() {
           icon={<Sliders />}
           title="Promociones"
           desc="Destacados y ofertas"
+        />
+
+        <ToolCard
+          to="/tools/finance"
+          icon={<Wallet />}
+          title="Finanzas"
+          desc="Gastos, compras y rentabilidad"
         />
 
         <ToolCard
