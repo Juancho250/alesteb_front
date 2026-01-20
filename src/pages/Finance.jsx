@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   PlusCircle, TrendingDown, TrendingUp, Wallet, X,
-  PieChart as PieChartIcon, Activity, Upload
+  PieChart as PieChartIcon, Activity, Package, ChevronRight
 } from "lucide-react";
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart,
@@ -22,29 +22,19 @@ export default function Finance() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [isNewProduct, setIsNewProduct] = useState(false);
-  const [productPreview, setProductPreview] = useState([]);
-  const [productImages, setProductImages] = useState([]);
-
   const [summary, setSummary] = useState({
     totalVentas: 0, totalGastos: 0, totalCompras: 0, rentabilidad: 0
   });
 
-  const [form, setForm] = useState({
-    type: "gasto",
-    category: "",
-    description: "",
-    amount: "",
-    product_id: "",
-    quantity: 1,
-    newName: "",
-    newPrice: "",
-    newCategory: ""
-  });
+  const initialForm = {
+    type: "gasto", category: "", description: "", amount: "",
+    product_id: "", quantity: 1
+  };
+  const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
     loadFinance();
-    api.get("/products").then(res => setProducts(res.data)).catch(err => console.error("Error productos", err));
+    api.get("/products").then(res => setProducts(res.data)).catch(err => console.error(err));
   }, []);
 
   const loadFinance = async () => {
@@ -54,6 +44,7 @@ export default function Finance() {
         api.get("/expenses/summary"),
         api.get("/sales")
       ]);
+      
       const salesArr = salesRes.data || [];
       const expensesArr = expRes.data || [];
       const ventas = salesArr.reduce((sum, s) => sum + Number(s.total || 0), 0);
@@ -61,12 +52,7 @@ export default function Finance() {
       const totalCompras = Number(sumRes.data?.totalCompras || 0);
 
       setExpenses(expensesArr);
-      setSummary({
-        totalVentas: ventas,
-        totalGastos,
-        totalCompras,
-        rentabilidad: ventas - totalGastos
-      });
+      setSummary({ totalVentas: ventas, totalGastos, totalCompras, rentabilidad: ventas - totalGastos });
 
       const catMap = {};
       expensesArr.forEach(e => {
@@ -83,311 +69,282 @@ export default function Finance() {
     }
   };
 
-  const handleImages = (e) => {
-    const files = Array.from(e.target.files);
-    setProductImages((prev) => [...prev, ...files]);
-    const previews = files.map((file) => URL.createObjectURL(file));
-    setProductPreview((prev) => [...prev, ...previews]);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const expenseData = {
+        type: form.type,
+        category: form.type === 'compra' ? `Reposición de Inventario` : (form.category || "Gasto"),
+        description: form.description,
+        amount: Number(form.amount),
+        product_id: form.product_id || null,
+        quantity: Number(form.quantity) || 1
+      };
+
+      await api.post("/expenses", expenseData);
+      setOpen(false);
+      loadFinance();
+      setForm(initialForm);
+    } catch (error) {
+      alert("Error al registrar movimiento");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const resetForm = () => {
-  setIsNewProduct(false);
-  setProductPreview([]);
-  setProductImages([]);
-  setForm({ 
-    type: "gasto", 
-    category: "", 
-    description: "", 
-    amount: "", 
-    product_id: "", 
-    quantity: 1, 
-    newName: "", 
-    newPrice: "", 
-    newCategory: "" 
-  });
-};
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-
-  try {
-    let finalProductId = form.product_id;
-
-    // 1. SI ES UNA COMPRA DE UN PRODUCTO NUEVO
-    if (form.type === "compra" && isNewProduct) {
-      const formData = new FormData();
-      formData.append("name", form.newName);
-      formData.append("price", form.newPrice);
-      formData.append("stock", form.quantity);
-      formData.append("category", form.newCategory || "General");
-
-      // USAR EL NOMBRE CORRECTO: productImages
-      if (productImages && productImages.length > 0) {
-        productImages.forEach((file) => {
-          formData.append("images", file);
-        });
-      }
-
-      console.log("Enviando producto a:", "/products");
-      
-      // ✅ SIN HEADERS MANUALES: Axios pondrá el Token y el Content-Type solo
-      const prodRes = await api.post("/products", formData);
-      finalProductId = prodRes.data.id;
-    }
-
-    // 2. REGISTRAR EL MOVIMIENTO FINANCIERO
-    const expenseData = {
-      type: form.type, 
-      category: isNewProduct ? `Compra: ${form.newName}` : (form.category || "Compra"),
-      description: form.description || (isNewProduct ? "Stock inicial" : ""),
-      amount: Number(form.amount),
-      product_id: finalProductId || null,
-      quantity: Number(form.quantity) || 1
-    };
-
-    await api.post("/expenses", expenseData);
-
-    // 3. ÉXITO Y RECARGA
-    alert("¡Registro completado!");
-    setOpen(false);
-    
-    // Recargar datos de la página
-    loadFinance(); 
-    
-    // Recargar lista de productos para el dropdown
-    const resP = await api.get("/products");
-    setProducts(resP.data);
-
-    resetForm();
-
-  } catch (error) {
-    console.error("Error detallado:", error.response);
-    const msg = error.response?.data?.message || "Error en el servidor";
-    alert(`Error ${error.response?.status}: ${msg}`);
-    
-    if (error.response?.status === 403) {
-      console.warn("⚠️ Revisa si tu token ha expirado o si el backend espera un rol de Admin.");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24">
       <Header />
 
-      <main className="max-w-5xl mx-auto p-6 space-y-8">
-        
-        {/* CARDS */}
+      <main className="max-w-6xl mx-auto p-6 space-y-8">
+        {/* KPI CARDS */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card
-            title="Ventas"
-            value={`$${summary.totalVentas.toLocaleString()}`}
-            icon={<TrendingUp className="text-emerald-600" />}
-          />
-          <Card
-            title="Gastos"
-            value={`$${summary.totalGastos.toLocaleString()}`}
-            icon={<TrendingDown className="text-red-500" />}
-          />
-          <Card
-            title="Compras"
-            value={`$${summary.totalCompras.toLocaleString()}`}
-            icon={<Wallet className="text-amber-500" />}
-          />
-          <Card
-            title="Rentabilidad"
-            value={`$${summary.rentabilidad.toLocaleString()}`}
-            icon={summary.rentabilidad >= 0 ? <Activity className="text-blue-600" /> : <TrendingDown className="text-red-600" />}
-          />
+          <StatCard title="Ventas" value={summary.totalVentas} color="emerald" icon={<TrendingUp />} />
+          <StatCard title="Gastos" value={summary.totalGastos} color="red" icon={<TrendingDown />} />
+          <StatCard title="Compras" value={summary.totalCompras} color="amber" icon={<Wallet />} />
+          <StatCard title="Neto" value={summary.rentabilidad} color="blue" icon={<Activity />} />
         </div>
 
-        {/* CHARTS - CORRECCIÓN RECHARTS AQUÍ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Gráfico 1 */}
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-w-0">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <TrendingUp size={20} className="text-emerald-500" /> Balance General
-            </h3>
-            {/* Contenedor con w-full y min-h */}
-            <div className="h-[250px] w-full">
+        {/* CHARTS SECTION */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ChartContainer title="Balance de Flujo" icon={<Activity className="text-emerald-500" />}>
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={comparisonData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 600}} />
                   <YAxis hide />
-                  <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
-                  <Bar dataKey="monto" radius={[10, 10, 0, 0]} barSize={50} />
+                  <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '16px', border: 'none'}} />
+                  <Bar dataKey="monto" radius={[12, 12, 12, 12]} barSize={60} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </ChartContainer>
 
-          {/* Gráfico 2 */}
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-w-0">
-            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <PieChartIcon size={20} className="text-indigo-500" /> Distribución de Gastos
-            </h3>
-            <div className="h-[250px] w-full">
+          <ChartContainer title="Distribución de Gastos" icon={<PieChartIcon className="text-indigo-500" />}>
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={categoryData}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                  <Pie data={categoryData} innerRadius={70} outerRadius={90} paddingAngle={8} dataKey="value">
+                    {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="none" />)}
                   </Pie>
-                  <Tooltip contentStyle={{borderRadius: '15px', border: 'none'}} />
-                  <Legend iconType="circle" />
+                  <Tooltip contentStyle={{borderRadius: '16px', border: 'none'}} />
+                  <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </ChartContainer>
         </div>
 
-        {/* BOTÓN Y LISTA (Sin cambios mayores, solo la llamada al modal) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <button
               onClick={() => setOpen(true)}
-              className="w-full bg-slate-900 text-white py-6 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl hover:bg-black transition-all active:scale-95"
+              className="w-full h-full min-h-[120px] bg-slate-900 text-white rounded-[2.5rem] font-black text-lg flex flex-col items-center justify-center gap-3 shadow-2xl hover:scale-[1.02] transition-all active:scale-95"
             >
-              <PlusCircle /> Registrar Movimiento
+              <PlusCircle size={32} />
+              Registrar Movimiento
             </button>
           </div>
 
-          <div className="lg:col-span-2 bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm">
-            <h3 className="font-bold text-slate-800 mb-6">Últimos Movimientos</h3>
+          <div className="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+            <h3 className="font-black text-slate-800 text-xl mb-6">Movimientos Recientes</h3>
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {expenses.length > 0 ? expenses.map((e) => (
-                <div key={e.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
+              {expenses.map((e) => (
+                <div key={e.id} className="flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100/50 rounded-2xl transition-colors group">
                   <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-xl ${e.type === 'gasto' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'}`}>
-                      <Wallet size={20} />
+                    <div className={`p-3 rounded-xl ${e.type === 'gasto' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                      {e.type === 'gasto' ? <TrendingDown size={20}/> : <Package size={20}/>}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800">{e.category}</p>
-                      <p className="text-xs text-slate-400">{e.description}</p>
+                      <p className="text-xs font-medium text-slate-400">{e.description || 'Sin descripción'}</p>
                     </div>
                   </div>
-                  <span className={`font-black ${e.type === "gasto" ? "text-red-500" : "text-amber-600"}`}>
+                  <span className={`font-black text-lg ${e.type === "gasto" ? "text-red-500" : "text-amber-600"}`}>
                     -${Number(e.amount).toLocaleString()}
                   </span>
                 </div>
-              )) : (
-                <p className="text-center text-slate-400 py-10">No hay movimientos registrados</p>
-              )}
+              ))}
             </div>
           </div>
         </div>
       </main>
 
-      {/* MODAL (Pega aquí el código del modal que te di en la respuesta anterior, no ha cambiado lógica interna) */}
-      {open && (
-        <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
-             {/* ... Usa el modal completo de la respuesta anterior ... */}
-             <div className="bg-white w-full max-w-4xl rounded-[2.5rem] p-8 relative shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
-                 {/* ... Botón cerrar ... */}
-                 <button onClick={() => { setOpen(false); resetForm(); }} className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
-                  <X size={18} />
-                </button>
-                <h3 className="font-black text-2xl mb-8 text-slate-800">Registrar Movimiento</h3>
-                
-                {/* INICIO FORMULARIO */}
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* ... (COPIA EL CONTENIDO DEL FORMULARIO DE MI RESPUESTA ANTERIOR) ... */}
-                    {/* Solo asegúrate de que los inputs de "Nuevo Producto" usen las variables form.newName, form.newCategory, etc. */}
-                    
-                    {/* COLUMNA IZQUIERDA: DATOS FINANCIEROS */}
-                    <div className="space-y-5">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase ml-2">Tipo</label>
-                            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, product_id: "" })} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-medium outline-none">
-                                <option value="gasto">Gasto Administrativo</option>
-                                <option value="compra">Compra de Inventario (+ Stock)</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase ml-2">Monto</label>
-                            <input type="number" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-emerald-600 outline-none" required />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase ml-2">Notas</label>
-                            <textarea placeholder="..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full bg-slate-50 border-none rounded-2xl p-4 h-32 resize-none outline-none" />
-                        </div>
-                    </div>
+      {/* MODAL DE REGISTRO ANCHO (DOS COLUMNAS) */}
+{open && (
+  <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+    <div className="bg-white w-full max-w-5xl rounded-[3rem] p-8 lg:p-12 relative shadow-2xl overflow-hidden">
+      
+      {/* Botón Cerrar */}
+      <button 
+        onClick={() => setOpen(false)} 
+        className="absolute top-8 right-8 p-2 bg-slate-100 rounded-full text-slate-500 hover:rotate-90 hover:bg-red-50 hover:text-red-500 transition-all z-10"
+      >
+        <X size={24} />
+      </button>
+      
+      <div className="mb-10">
+        <h2 className="text-3xl font-black text-slate-800">Nuevo Registro</h2>
+        <p className="text-slate-400 font-medium">Gestiona tus salidas de dinero y reabastecimiento</p>
+      </div>
 
-                    {/* COLUMNA DERECHA: PRODUCTO */}
-                    <div className="space-y-5">
-                        {form.type === "compra" ? (
-                            <div className="p-6 bg-blue-50/50 rounded-[2rem] border border-blue-100 space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-xs font-bold text-blue-500 uppercase ml-2">Producto</label>
-                                    <button type="button" onClick={() => setIsNewProduct(!isNewProduct)} className="text-xs font-black text-blue-600 underline">
-                                        {isNewProduct ? "Ver existentes" : "+ Crear Nuevo"}
-                                    </button>
-                                </div>
-                                {!isNewProduct ? (
-                                    <div className="space-y-4">
-                                        <select value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })} className="w-full bg-white border-none rounded-xl p-4 outline-none" required>
-                                            <option value="">Seleccionar...</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</option>)}
-                                        </select>
-                                        <input type="number" placeholder="Cantidad" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className="w-full bg-white border-none rounded-xl p-4 outline-none" required />
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <input placeholder="Nombre" value={form.newName} onChange={(e) => setForm({...form, newName: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
-                                        <input placeholder="Categoría" value={form.newCategory} onChange={(e) => setForm({...form, newCategory: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input type="number" placeholder="Precio" value={form.newPrice} onChange={(e) => setForm({...form, newPrice: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
-                                            <input type="number" placeholder="Stock" value={form.quantity} onChange={(e) => setForm({...form, quantity: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
-                                        </div>
-                                        <div className="border-2 border-dashed border-blue-200 rounded-xl p-4 text-center relative">
-                                            <input type="file" multiple accept="image/*" onChange={handleImages} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                            <Upload size={20} className="mx-auto text-blue-400" />
-                                        </div>
-                                        <div className="flex gap-2 overflow-x-auto">
-                                            {productPreview.map((src, i) => <img key={i} src={src} className="w-10 h-10 object-cover rounded-md" />)}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase ml-2">Categoría</label>
-                                <input placeholder="Ej: Luz, Agua..." value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full bg-slate-50 border-none rounded-2xl p-4 outline-none" required />
-                            </div>
-                        )}
-                        <button disabled={loading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                            {loading ? "Procesando..." : "Guardar"}
-                        </button>
-                    </div>
-                </form>
-             </div>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        
+        {/* COLUMNA IZQUIERDA: CONFIGURACIÓN PRINCIPAL */}
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Tipo de Movimiento</label>
+            <div className="grid grid-cols-2 gap-3 bg-slate-100 p-2 rounded-[1.5rem]">
+              {['gasto', 'compra'].map(t => (
+                <button 
+                  key={t} 
+                  type="button" 
+                  onClick={() => setForm({...form, type: t})} 
+                  className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                    form.type === t 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {t === 'gasto' ? 'Gasto General' : 'Compra Stock'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Monto del Flujo</label>
+            <div className="relative">
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-emerald-500/50">$</span>
+              <input 
+                type="number" 
+                value={form.amount} 
+                onChange={e => setForm({...form, amount: e.target.value})} 
+                className="w-full bg-slate-50 border-none pl-12 p-6 rounded-[1.5rem] text-3xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-all" 
+                placeholder="0.00" 
+                required 
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Notas / Observaciones</label>
+            <textarea 
+              value={form.description} 
+              onChange={e => setForm({...form, description: e.target.value})} 
+              className="w-full bg-slate-50 border-none p-6 rounded-[1.5rem] h-32 resize-none font-medium outline-none focus:ring-2 focus:ring-slate-200" 
+              placeholder="Escribe un recordatorio o detalle del movimiento..." 
+            />
+          </div>
         </div>
-      )}
+
+        {/* COLUMNA DERECHA: DETALLES ESPECÍFICOS */}
+        <div className="flex flex-col justify-between">
+          <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 space-y-6">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              {form.type === 'compra' ? <Package size={18} className="text-blue-500" /> : <Activity size={18} className="text-indigo-500" />}
+              {form.type === 'compra' ? 'Detalle de Inventario' : 'Clasificación de Gasto'}
+            </h3>
+
+            {form.type === 'compra' ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Producto Existente</p>
+                  <select 
+                    value={form.product_id} 
+                    onChange={e => setForm({...form, product_id: e.target.value})} 
+                    className="w-full bg-white border border-slate-200 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all appearance-none" 
+                    required
+                  >
+                    <option value="">Seleccionar producto...</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} (Actual: {p.stock})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Cantidad Ingresada</p>
+                  <input 
+                    type="number" 
+                    placeholder="Unidades" 
+                    value={form.quantity} 
+                    onChange={e => setForm({...form, quantity: e.target.value})} 
+                    className="w-full bg-white border border-slate-200 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all" 
+                    required 
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nombre de la Categoría</p>
+                <input 
+                  placeholder="Ej: Pago Proveedores, Luz, Agua..." 
+                  value={form.category} 
+                  onChange={e => setForm({...form, category: e.target.value})} 
+                  className="w-full bg-white border border-slate-200 p-5 rounded-2xl font-bold outline-none focus:border-indigo-500 transition-all" 
+                  required 
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 lg:mt-0">
+            <button 
+              disabled={loading} 
+              className="w-full bg-slate-900 text-white py-8 rounded-[2rem] font-black text-xl shadow-2xl shadow-slate-200 hover:bg-black hover:scale-[1.01] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <PlusCircle size={24} />
+                  Confirmar Registro
+                </>
+              )}
+            </button>
+            <p className="text-center text-slate-400 text-xs font-medium mt-4">Toda transacción será guardada en el historial de caja.</p>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
       <BottomNav />
     </div>
   );
 }
 
-function Card({ title, value, icon }) {
+// COMPONENTES AUXILIARES
+function StatCard({ title, value, color, icon }) {
+  const colors = {
+    emerald: "bg-emerald-50 text-emerald-600",
+    red: "bg-red-50 text-red-600",
+    amber: "bg-amber-50 text-amber-600",
+    blue: "bg-blue-50 text-blue-600"
+  };
   return (
-    <div className="bg-white rounded-[1.5rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3">
-      <div className="w-10 h-10 flex items-center justify-center bg-slate-50 rounded-xl">{icon}</div>
-      <div>
-        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-        <p className="text-xl font-black text-slate-800">{value}</p>
+    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col gap-4">
+      <div className={`w-12 h-12 flex items-center justify-center rounded-2xl ${colors[color]}`}>
+        {icon}
       </div>
+      <div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
+        <p className="text-2xl font-black text-slate-800">${Number(value).toLocaleString()}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChartContainer({ title, icon, children }) {
+  return (
+    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col min-w-0">
+      <h3 className="font-black text-slate-800 mb-8 flex items-center gap-3 text-lg">
+        {icon} {title}
+      </h3>
+      {children}
     </div>
   );
 }
