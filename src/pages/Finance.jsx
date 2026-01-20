@@ -1,46 +1,50 @@
 import { useEffect, useState } from "react";
 import {
-  PlusCircle,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-  X,
-  PieChart as PieChartIcon,
-  Activity
+  PlusCircle, TrendingDown, TrendingUp, Wallet, X,
+  PieChart as PieChartIcon, Activity, Upload
 } from "lucide-react";
 import {
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  Legend
+  XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart,
+  Bar, CartesianGrid, PieChart, Pie, Cell, Legend
 } from "recharts";
 
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 
+const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#3b82f6'];
+
 export default function Finance() {
-  const [products, setProducts] = useState([]); // Nuevo estado para productos
+  const [products, setProducts] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
+  const [comparisonData, setComparisonData] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [isNewProduct, setIsNewProduct] = useState(false);
+  const [productPreview, setProductPreview] = useState([]);
+  const [productImages, setProductImages] = useState([]);
+
+  const [summary, setSummary] = useState({
+    totalVentas: 0, totalGastos: 0, totalCompras: 0, rentabilidad: 0
+  });
+
   const [form, setForm] = useState({
     type: "gasto",
     category: "",
     description: "",
     amount: "",
-    product_id: "", // Nuevo campo
-    quantity: 1      // Nuevo campo
+    product_id: "",
+    quantity: 1,
+    newName: "",
+    newPrice: "",
+    newCategory: ""
   });
 
-  // Cargar productos al iniciar para el selector
   useEffect(() => {
     loadFinance();
-    api.get("/products").then(res => setProducts(res.data));
+    api.get("/products").then(res => setProducts(res.data)).catch(err => console.error("Error productos", err));
   }, []);
 
   const loadFinance = async () => {
@@ -50,10 +54,8 @@ export default function Finance() {
         api.get("/expenses/summary"),
         api.get("/sales")
       ]);
-
       const salesArr = salesRes.data || [];
       const expensesArr = expRes.data || [];
-
       const ventas = salesArr.reduce((sum, s) => sum + Number(s.total || 0), 0);
       const totalGastos = Number(sumRes.data?.totalGastos || 0);
       const totalCompras = Number(sumRes.data?.totalCompras || 0);
@@ -66,36 +68,111 @@ export default function Finance() {
         rentabilidad: ventas - totalGastos
       });
 
-      // 1. Procesar datos para Gráfica de Pastel (Gastos por Categoría)
       const catMap = {};
       expensesArr.forEach(e => {
         catMap[e.category] = (catMap[e.category] || 0) + Number(e.amount);
       });
       setCategoryData(Object.entries(catMap).map(([name, value]) => ({ name, value })));
 
-      // 2. Procesar datos para Gráfica de Barras (Ingresos vs Egresos)
       setComparisonData([
         { name: 'Ingresos', monto: ventas, fill: '#10b981' },
         { name: 'Egresos', monto: totalGastos + totalCompras, fill: '#ef4444' }
       ]);
-
     } catch (error) {
       console.error("Error cargando finanzas:", error);
     }
   };
 
-  const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#3b82f6'];
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await api.post("/expenses", {
-      ...form,
-      amount: Number(form.amount)
-    });
-    setForm({ type: "gasto", category: "", description: "", amount: "" });
-    setOpen(false);
-    loadFinance();
+  const handleImages = (e) => {
+    const files = Array.from(e.target.files);
+    setProductImages((prev) => [...prev, ...files]);
+    const previews = files.map((file) => URL.createObjectURL(file));
+    setProductPreview((prev) => [...prev, ...previews]);
   };
+
+  const resetForm = () => {
+  setIsNewProduct(false);
+  setProductPreview([]);
+  setProductImages([]);
+  setForm({ 
+    type: "gasto", 
+    category: "", 
+    description: "", 
+    amount: "", 
+    product_id: "", 
+    quantity: 1, 
+    newName: "", 
+    newPrice: "", 
+    newCategory: "" 
+  });
+};
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+
+  try {
+    let finalProductId = form.product_id;
+
+    // 1. SI ES UNA COMPRA DE UN PRODUCTO NUEVO
+    if (form.type === "compra" && isNewProduct) {
+      const formData = new FormData();
+      formData.append("name", form.newName);
+      formData.append("price", form.newPrice);
+      formData.append("stock", form.quantity);
+      formData.append("category", form.newCategory || "General");
+
+      // USAR EL NOMBRE CORRECTO: productImages
+      if (productImages && productImages.length > 0) {
+        productImages.forEach((file) => {
+          formData.append("images", file);
+        });
+      }
+
+      console.log("Enviando producto a:", "/products");
+      
+      // ✅ SIN HEADERS MANUALES: Axios pondrá el Token y el Content-Type solo
+      const prodRes = await api.post("/products", formData);
+      finalProductId = prodRes.data.id;
+    }
+
+    // 2. REGISTRAR EL MOVIMIENTO FINANCIERO
+    const expenseData = {
+      type: form.type, 
+      category: isNewProduct ? `Compra: ${form.newName}` : (form.category || "Compra"),
+      description: form.description || (isNewProduct ? "Stock inicial" : ""),
+      amount: Number(form.amount),
+      product_id: finalProductId || null,
+      quantity: Number(form.quantity) || 1
+    };
+
+    await api.post("/expenses", expenseData);
+
+    // 3. ÉXITO Y RECARGA
+    alert("¡Registro completado!");
+    setOpen(false);
+    
+    // Recargar datos de la página
+    loadFinance(); 
+    
+    // Recargar lista de productos para el dropdown
+    const resP = await api.get("/products");
+    setProducts(resP.data);
+
+    resetForm();
+
+  } catch (error) {
+    console.error("Error detallado:", error.response);
+    const msg = error.response?.data?.message || "Error en el servidor";
+    alert(`Error ${error.response?.status}: ${msg}`);
+    
+    if (error.response?.status === 403) {
+      console.warn("⚠️ Revisa si tu token ha expirado o si el backend espera un rol de Admin.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans">
@@ -103,7 +180,7 @@ export default function Finance() {
 
       <main className="max-w-5xl mx-auto p-6 space-y-8">
         
-        {/* RESUMEN DE TARJETAS */}
+        {/* CARDS */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card
             title="Ventas"
@@ -127,15 +204,16 @@ export default function Finance() {
           />
         </div>
 
-        {/* SECCIÓN DE GRÁFICAS */}
+        {/* CHARTS - CORRECCIÓN RECHARTS AQUÍ */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          {/* Gráfica 1: Comparativa Barras */}
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+          {/* Gráfico 1 */}
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-w-0">
             <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
               <TrendingUp size={20} className="text-emerald-500" /> Balance General
             </h3>
-            <div className="h-[250px]">
+            {/* Contenedor con w-full y min-h */}
+            <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={comparisonData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -148,12 +226,12 @@ export default function Finance() {
             </div>
           </div>
 
-          {/* Gráfica 2: Distribución Pastel */}
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+          {/* Gráfico 2 */}
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col min-w-0">
             <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
               <PieChartIcon size={20} className="text-indigo-500" /> Distribución de Gastos
             </h3>
-            <div className="h-[250px]">
+            <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -175,7 +253,7 @@ export default function Finance() {
           </div>
         </div>
 
-        {/* BOTÓN REGISTRAR Y LISTADO */}
+        {/* BOTÓN Y LISTA (Sin cambios mayores, solo la llamada al modal) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
             <button
@@ -212,72 +290,91 @@ export default function Finance() {
         </div>
       </main>
 
-      {/* MODAL (Se mantiene igual pero con estilo Apple) */}
+      {/* MODAL (Pega aquí el código del modal que te di en la respuesta anterior, no ha cambiado lógica interna) */}
       {open && (
-        <div className="fixed inset-0 z-[9999] ...">
-            <div className="bg-white ... p-8 ...">
-            {/* FORMULARIO */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <select 
-                value={form.type} 
-                onChange={(e) => setForm({ ...form, type: e.target.value, product_id: "" })} 
-                className="..."
-                >
-                <option value="gasto">Gasto Administrativo</option>
-                <option value="compra">Compra de Inventario (Suma Stock)</option>
-                </select>
-
-                {/* SI ES COMPRA, MOSTRAR SELECTOR DE PRODUCTOS */}
-                {form.type === "compra" && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <select
-                    value={form.product_id}
-                    onChange={(e) => {
-                        const prod = products.find(p => p.id === e.target.value);
-                        setForm({ ...form, product_id: e.target.value, category: `Compra: ${prod?.name}` });
-                    }}
-                    className="w-full bg-blue-50 border-2 border-blue-200 rounded-2xl p-4"
-                    required
-                    >
-                    <option value="">Seleccionar Producto...</option>
-                    {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} (Stock actual: {p.stock})</option>
-                    ))}
-                    </select>
-
-                    <input 
-                    type="number" 
-                    placeholder="Cantidad a sumar" 
-                    value={form.quantity}
-                    onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
-                    className="w-full bg-slate-50 border-none rounded-2xl p-4"
-                    min="1"
-                    />
-                </div>
-                )}
-
-                {/* CATEGORÍA Y MONTO (Igual que antes) */}
-                <input 
-                placeholder="Categoría" 
-                value={form.category} 
-                onChange={(e) => setForm({ ...form, category: e.target.value })} 
-                className="..." 
-                disabled={form.type === 'compra'} // Se auto-llena con el nombre del producto
-                />
+        <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
+             {/* ... Usa el modal completo de la respuesta anterior ... */}
+             <div className="bg-white w-full max-w-4xl rounded-[2.5rem] p-8 relative shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
+                 {/* ... Botón cerrar ... */}
+                 <button onClick={() => { setOpen(false); resetForm(); }} className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                  <X size={18} />
+                </button>
+                <h3 className="font-black text-2xl mb-8 text-slate-800">Registrar Movimiento</h3>
                 
-                <input 
-                type="number" 
-                placeholder="Monto Pagado" 
-                value={form.amount} 
-                onChange={(e) => setForm({ ...form, amount: e.target.value })} 
-                className="..." 
-                />
+                {/* INICIO FORMULARIO */}
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* ... (COPIA EL CONTENIDO DEL FORMULARIO DE MI RESPUESTA ANTERIOR) ... */}
+                    {/* Solo asegúrate de que los inputs de "Nuevo Producto" usen las variables form.newName, form.newCategory, etc. */}
+                    
+                    {/* COLUMNA IZQUIERDA: DATOS FINANCIEROS */}
+                    <div className="space-y-5">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase ml-2">Tipo</label>
+                            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, product_id: "" })} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-medium outline-none">
+                                <option value="gasto">Gasto Administrativo</option>
+                                <option value="compra">Compra de Inventario (+ Stock)</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase ml-2">Monto</label>
+                            <input type="number" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-emerald-600 outline-none" required />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase ml-2">Notas</label>
+                            <textarea placeholder="..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full bg-slate-50 border-none rounded-2xl p-4 h-32 resize-none outline-none" />
+                        </div>
+                    </div>
 
-                <button className="...">Guardar y Actualizar Stock</button>
-            </form>
-            </div>
+                    {/* COLUMNA DERECHA: PRODUCTO */}
+                    <div className="space-y-5">
+                        {form.type === "compra" ? (
+                            <div className="p-6 bg-blue-50/50 rounded-[2rem] border border-blue-100 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-bold text-blue-500 uppercase ml-2">Producto</label>
+                                    <button type="button" onClick={() => setIsNewProduct(!isNewProduct)} className="text-xs font-black text-blue-600 underline">
+                                        {isNewProduct ? "Ver existentes" : "+ Crear Nuevo"}
+                                    </button>
+                                </div>
+                                {!isNewProduct ? (
+                                    <div className="space-y-4">
+                                        <select value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })} className="w-full bg-white border-none rounded-xl p-4 outline-none" required>
+                                            <option value="">Seleccionar...</option>
+                                            {products.map(p => <option key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</option>)}
+                                        </select>
+                                        <input type="number" placeholder="Cantidad" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className="w-full bg-white border-none rounded-xl p-4 outline-none" required />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <input placeholder="Nombre" value={form.newName} onChange={(e) => setForm({...form, newName: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
+                                        <input placeholder="Categoría" value={form.newCategory} onChange={(e) => setForm({...form, newCategory: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input type="number" placeholder="Precio" value={form.newPrice} onChange={(e) => setForm({...form, newPrice: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
+                                            <input type="number" placeholder="Stock" value={form.quantity} onChange={(e) => setForm({...form, quantity: e.target.value})} className="w-full bg-white border-none rounded-xl p-3 outline-none" required />
+                                        </div>
+                                        <div className="border-2 border-dashed border-blue-200 rounded-xl p-4 text-center relative">
+                                            <input type="file" multiple accept="image/*" onChange={handleImages} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                            <Upload size={20} className="mx-auto text-blue-400" />
+                                        </div>
+                                        <div className="flex gap-2 overflow-x-auto">
+                                            {productPreview.map((src, i) => <img key={i} src={src} className="w-10 h-10 object-cover rounded-md" />)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase ml-2">Categoría</label>
+                                <input placeholder="Ej: Luz, Agua..." value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full bg-slate-50 border-none rounded-2xl p-4 outline-none" required />
+                            </div>
+                        )}
+                        <button disabled={loading} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold shadow-xl hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+                            {loading ? "Procesando..." : "Guardar"}
+                        </button>
+                    </div>
+                </form>
+             </div>
         </div>
-        )}
+      )}
       <BottomNav />
     </div>
   );
