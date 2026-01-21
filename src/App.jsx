@@ -1,23 +1,27 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import PrivateRoute from "./routes/PrivateRoute";
-import MainLayout from "./components/MainLayout";
 
-// Pages
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
-import Users from "./pages/Users";
+import ProductCreate from "./pages/ProductCreate";
 import Sales from "./pages/Sales";
+import SalesHistory from "./pages/SalesHistory";
 import Tools from "./pages/Tools";
+import Banners from "./pages/tools/Banners";
+import Users from "./pages/Users";
+import Finance from "./pages/Finance";
+
+import PrivateRoute from "./routes/PrivateRoute";
+import MainLayout from "./components/MainLayout";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Pública */}
+        {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
 
-        {/* Privadas con layout */}
+        {/* PRIVATE CON LAYOUT */}
         <Route
           element={
             <PrivateRoute>
@@ -27,9 +31,15 @@ export default function App() {
         >
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
-          <Route path="/users" element={<Users />} />
+          <Route path="/products/new" element={<ProductCreate />} />
           <Route path="/sales" element={<Sales />} />
+          <Route path="/history" element={<SalesHistory />} />
+          <Route path="/users" element={<Users />} />
+
+          {/* TOOLS */}
           <Route path="/tools" element={<Tools />} />
+          <Route path="/tools/banners" element={<Banners />} />
+          <Route path="/tools/finance" element={<Finance />} />
         </Route>
       </Routes>
     </BrowserRouter>
