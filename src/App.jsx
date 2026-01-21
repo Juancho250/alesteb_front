@@ -1,109 +1,36 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import PrivateRoute from "./routes/PrivateRoute";
+import MainLayout from "./components/MainLayout";
 
+// Pages
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
-import ProductCreate from "./pages/ProductCreate";
-import Sales from "./pages/Sales";
-import SalesHistory from "./pages/SalesHistory";
-import Tools from "./pages/Tools";
-import Banners from "./pages/tools/Banners";
 import Users from "./pages/Users";
-import Finance from "./pages/Finance";
-
-import PrivateRoute from "./routes/PrivateRoute";
+import Sales from "./pages/Sales";
+import Tools from "./pages/Tools";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* PUBLIC */}
+        {/* Pública */}
         <Route path="/login" element={<Login />} />
 
-        {/* PRIVATE */}
+        {/* Privadas con layout */}
         <Route
-          path="/"
           element={
             <PrivateRoute>
-              <Dashboard />
+              <MainLayout />
             </PrivateRoute>
           }
-        />
-
-        <Route
-          path="/products"
-          element={
-            <PrivateRoute>
-              <Products />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/products/new"
-          element={
-            <PrivateRoute>
-              <ProductCreate />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/sales"
-          element={
-            <PrivateRoute>
-              <Sales />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/history"
-          element={
-            <PrivateRoute>
-              <SalesHistory />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/users"
-          element={
-            <PrivateRoute>
-              <Users />
-            </PrivateRoute>
-          }
-        />
-
-        {/* TOOLS */}
-        <Route
-          path="/tools"
-          element={
-            <PrivateRoute>
-              <Tools />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/tools/banners"
-          element={
-            <PrivateRoute>
-              <Banners />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/tools/finance"
-          element={
-            <PrivateRoute>
-              <Finance />
-            </PrivateRoute>
-          }
-        />
-
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/sales" element={<Sales />} />
+          <Route path="/tools" element={<Tools />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
