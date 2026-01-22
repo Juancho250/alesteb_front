@@ -173,144 +173,144 @@ export default function Finance() {
       </main>
 
       {/* MODAL DE REGISTRO ANCHO (DOS COLUMNAS) */}
-{open && (
-  <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-    <div className="bg-white w-full max-w-5xl rounded-[3rem] p-8 lg:p-12 relative shadow-2xl overflow-hidden">
-      
-      {/* Botón Cerrar */}
-      <button 
-        onClick={() => setOpen(false)} 
-        className="absolute top-8 right-8 p-2 bg-slate-100 rounded-full text-slate-500 hover:rotate-90 hover:bg-red-50 hover:text-red-500 transition-all z-10"
-      >
-        <X size={24} />
-      </button>
-      
-      <div className="mb-10">
-        <h2 className="text-3xl font-black text-slate-800">Nuevo Registro</h2>
-        <p className="text-slate-400 font-medium">Gestiona tus salidas de dinero y reabastecimiento</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        
-        {/* COLUMNA IZQUIERDA: CONFIGURACIÓN PRINCIPAL */}
-        <div className="space-y-8">
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Tipo de Movimiento</label>
-            <div className="grid grid-cols-2 gap-3 bg-slate-100 p-2 rounded-[1.5rem]">
-              {['gasto', 'compra'].map(t => (
-                <button 
-                  key={t} 
-                  type="button" 
-                  onClick={() => setForm({...form, type: t})} 
-                  className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                    form.type === t 
-                      ? 'bg-white text-blue-600 shadow-sm' 
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {t === 'gasto' ? 'Gasto General' : 'Compra Stock'}
-                </button>
-              ))}
+      {open && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-5xl rounded-[3rem] p-8 lg:p-12 relative shadow-2xl overflow-hidden">
+            
+            {/* Botón Cerrar */}
+            <button 
+              onClick={() => setOpen(false)} 
+              className="absolute top-8 right-8 p-2 bg-slate-100 rounded-full text-slate-500 hover:rotate-90 hover:bg-red-50 hover:text-red-500 transition-all z-10"
+            >
+              <X size={24} />
+            </button>
+            
+            <div className="mb-10">
+              <h2 className="text-3xl font-black text-slate-800">Nuevo Registro</h2>
+              <p className="text-slate-400 font-medium">Gestiona tus salidas de dinero y reabastecimiento</p>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Monto del Flujo</label>
-            <div className="relative">
-              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-emerald-500/50">$</span>
-              <input 
-                type="number" 
-                value={form.amount} 
-                onChange={e => setForm({...form, amount: e.target.value})} 
-                className="w-full bg-slate-50 border-none pl-12 p-6 rounded-[1.5rem] text-3xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-all" 
-                placeholder="0.00" 
-                required 
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Notas / Observaciones</label>
-            <textarea 
-              value={form.description} 
-              onChange={e => setForm({...form, description: e.target.value})} 
-              className="w-full bg-slate-50 border-none p-6 rounded-[1.5rem] h-32 resize-none font-medium outline-none focus:ring-2 focus:ring-slate-200" 
-              placeholder="Escribe un recordatorio o detalle del movimiento..." 
-            />
-          </div>
-        </div>
-
-        {/* COLUMNA DERECHA: DETALLES ESPECÍFICOS */}
-        <div className="flex flex-col justify-between">
-          <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 space-y-6">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              {form.type === 'compra' ? <Package size={18} className="text-blue-500" /> : <Activity size={18} className="text-indigo-500" />}
-              {form.type === 'compra' ? 'Detalle de Inventario' : 'Clasificación de Gasto'}
-            </h3>
-
-            {form.type === 'compra' ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Producto Existente</p>
-                  <select 
-                    value={form.product_id} 
-                    onChange={e => setForm({...form, product_id: e.target.value})} 
-                    className="w-full bg-white border border-slate-200 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all appearance-none" 
-                    required
-                  >
-                    <option value="">Seleccionar producto...</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (Actual: {p.stock})</option>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              
+              {/* COLUMNA IZQUIERDA: CONFIGURACIÓN PRINCIPAL */}
+              <div className="space-y-8">
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Tipo de Movimiento</label>
+                  <div className="grid grid-cols-2 gap-3 bg-slate-100 p-2 rounded-[1.5rem]">
+                    {['gasto', 'compra'].map(t => (
+                      <button 
+                        key={t} 
+                        type="button" 
+                        onClick={() => setForm({...form, type: t})} 
+                        className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                          form.type === t 
+                            ? 'bg-white text-blue-600 shadow-sm' 
+                            : 'text-slate-400 hover:text-slate-600'
+                        }`}
+                      >
+                        {t === 'gasto' ? 'Gasto General' : 'Compra Stock'}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Cantidad Ingresada</p>
-                  <input 
-                    type="number" 
-                    placeholder="Unidades" 
-                    value={form.quantity} 
-                    onChange={e => setForm({...form, quantity: e.target.value})} 
-                    className="w-full bg-white border border-slate-200 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all" 
-                    required 
+
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Monto del Flujo</label>
+                  <div className="relative">
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-emerald-500/50">$</span>
+                    <input 
+                      type="number" 
+                      value={form.amount} 
+                      onChange={e => setForm({...form, amount: e.target.value})} 
+                      className="w-full bg-slate-50 border-none pl-12 p-6 rounded-[1.5rem] text-3xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500 transition-all" 
+                      placeholder="0.00" 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Notas / Observaciones</label>
+                  <textarea 
+                    value={form.description} 
+                    onChange={e => setForm({...form, description: e.target.value})} 
+                    className="w-full bg-slate-50 border-none p-6 rounded-[1.5rem] h-32 resize-none font-medium outline-none focus:ring-2 focus:ring-slate-200" 
+                    placeholder="Escribe un recordatorio o detalle del movimiento..." 
                   />
                 </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nombre de la Categoría</p>
-                <input 
-                  placeholder="Ej: Pago Proveedores, Luz, Agua..." 
-                  value={form.category} 
-                  onChange={e => setForm({...form, category: e.target.value})} 
-                  className="w-full bg-white border border-slate-200 p-5 rounded-2xl font-bold outline-none focus:border-indigo-500 transition-all" 
-                  required 
-                />
-              </div>
-            )}
-          </div>
 
-          <div className="mt-8 lg:mt-0">
-            <button 
-              disabled={loading} 
-              className="w-full bg-slate-900 text-white py-8 rounded-[2rem] font-black text-xl shadow-2xl shadow-slate-200 hover:bg-black hover:scale-[1.01] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-            >
-              {loading ? (
-                <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <PlusCircle size={24} />
-                  Confirmar Registro
-                </>
-              )}
-            </button>
-            <p className="text-center text-slate-400 text-xs font-medium mt-4">Toda transacción será guardada en el historial de caja.</p>
+              {/* COLUMNA DERECHA: DETALLES ESPECÍFICOS */}
+              <div className="flex flex-col justify-between">
+                <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 space-y-6">
+                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                    {form.type === 'compra' ? <Package size={18} className="text-blue-500" /> : <Activity size={18} className="text-indigo-500" />}
+                    {form.type === 'compra' ? 'Detalle de Inventario' : 'Clasificación de Gasto'}
+                  </h3>
+
+                  {form.type === 'compra' ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Producto Existente</p>
+                        <select 
+                          value={form.product_id} 
+                          onChange={e => setForm({...form, product_id: e.target.value})} 
+                          className="w-full bg-white border border-slate-200 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all appearance-none" 
+                          required
+                        >
+                          <option value="">Seleccionar producto...</option>
+                          {products.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} (Actual: {p.stock})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Cantidad Ingresada</p>
+                        <input 
+                          type="number" 
+                          placeholder="Unidades" 
+                          value={form.quantity} 
+                          onChange={e => setForm({...form, quantity: e.target.value})} 
+                          className="w-full bg-white border border-slate-200 p-4 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all" 
+                          required 
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nombre de la Categoría</p>
+                      <input 
+                        placeholder="Ej: Pago Proveedores, Luz, Agua..." 
+                        value={form.category} 
+                        onChange={e => setForm({...form, category: e.target.value})} 
+                        className="w-full bg-white border border-slate-200 p-5 rounded-2xl font-bold outline-none focus:border-indigo-500 transition-all" 
+                        required 
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-8 lg:mt-0">
+                  <button 
+                    disabled={loading} 
+                    className="w-full bg-slate-900 text-white py-8 rounded-[2rem] font-black text-xl shadow-2xl shadow-slate-200 hover:bg-black hover:scale-[1.01] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                  >
+                    {loading ? (
+                      <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <PlusCircle size={24} />
+                        Confirmar Registro
+                      </>
+                    )}
+                  </button>
+                  <p className="text-center text-slate-400 text-xs font-medium mt-4">Toda transacción será guardada en el historial de caja.</p>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
 
       <BottomNav />
     </div>

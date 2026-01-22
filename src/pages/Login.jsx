@@ -18,16 +18,23 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // 1. Limpieza preventiva de datos antiguos para evitar conflictos 403
+      // 1. Limpieza preventiva absoluta
       localStorage.clear(); 
 
       const res = await api.post("/auth/login", { email, password });
 
-      // 2. Guardar sesión
+      // 2. Definir tiempos de expiración
+      // 3600000 ms = 1 hora. Ajusta este valor según la duración de tu token de backend
+      const expiresIn = 3600 * 1000; 
+      const expirationTime = new Date().getTime() + expiresIn;
+
+      // 3. Guardar sesión con marcas de tiempo
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
+      localStorage.setItem("expirationTime", expirationTime.toString());
+      localStorage.setItem("loginTimestamp", new Date().getTime().toString());
 
-      // 3. Redirección interna sin recargar la pestaña
+      // 4. Redirección
       navigate("/");
     } catch (err) {
       console.error("Login error:", err);
@@ -42,7 +49,6 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4 font-sans">
       <div className="max-w-md w-full">
-        {/* Logo o Cabecera */}
         <div className="text-center mb-8">
           <div className="bg-slate-900 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <Lock className="text-white" size={24} />
@@ -67,7 +73,6 @@ export default function Login() {
           )}
 
           <div className="space-y-5">
-            {/* Input Email */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase ml-2">Email</label>
               <div className="relative">
@@ -83,7 +88,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Input Password */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase ml-2">Contraseña</label>
               <div className="relative">

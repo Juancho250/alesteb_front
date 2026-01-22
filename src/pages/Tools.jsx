@@ -51,7 +51,7 @@ export default function Tools() {
         />
 
         <ToolCard
-          to="/tools/promotions"
+          to="/tools/discounts"
           icon={<Sliders />}
           title="Promociones"
           desc="Destacados y ofertas"
