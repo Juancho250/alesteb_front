@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { 
   Plus, Trash2, Eye, X, Upload, 
   Package, ShoppingBag, AlertCircle, Search 
@@ -6,13 +5,30 @@ import {
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
+import { useState, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 
-// --- COMPONENTE MODAL PARA CREAR ---
 function CreateProductModal({ isOpen, onClose, onCreated }) {
-  const [form, setForm] = useState({ name: "", price: "", stock: "", category: "" });
+  const [form, setForm] = useState({ name: "", price: "", stock: "", category_id: "" });
+  const [categories, setCategories] = useState([]);
   const [preview, setPreview] = useState([]);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // 1. Cargar categorías al abrir el modal
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCats = async () => {
+        try {
+          const { data } = await api.get("/categories/flat");
+          setCategories(data);
+        } catch (err) {
+          console.error("Error cargando categorías", err);
+        }
+      };
+      fetchCats();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -33,33 +49,34 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!form.category_id) return alert("Por favor selecciona una categoría");
+    
     setLoading(true);
     try {
       const data = new FormData();
       data.append("name", form.name);
       data.append("price", form.price);
       data.append("stock", form.stock);
-      data.append("category", form.category || "General");
+      data.append("category_id", form.category_id);
       images.forEach((img) => data.append("images", img));
 
       await api.post("/products", data);
       onCreated();
       onClose();
-      setForm({ name: "", price: "", stock: "", category: "" });
+      setForm({ name: "", price: "", stock: "", category_id: "" });
       setPreview([]);
       setImages([]);
     } catch (err) {
-      alert("Error al guardar producto");
+      alert(err.response?.data?.message || "Error al guardar producto");
     } finally {
       setLoading(false);
     }
   };
-  
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-md max-h-[90vh] overflow-y-auto p-8 relative shadow-2xl animate-in zoom-in duration-300">
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition-colors">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-md max-h-[90vh] overflow-y-auto p-8 relative shadow-2xl">
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
           <X size={20} />
         </button>
 
@@ -68,14 +85,37 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
         <form onSubmit={submit} className="space-y-5">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase ml-2">Información Básica</label>
-            <input name="name" placeholder="Nombre del producto" className="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" onChange={handleChange} required />
-            <input name="category" placeholder="Categoría (Ej: Calzado)" className="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" onChange={handleChange} />
+            <input 
+              name="name" 
+              placeholder="Nombre del producto" 
+              className="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" 
+              onChange={handleChange} 
+              required 
+            />
+            
+            <div className="relative">
+              <select 
+                name="category_id"
+                value={form.category_id}
+                onChange={handleChange}
+                className="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium appearance-none cursor-pointer"
+                required
+              >
+                <option value="">Seleccionar Categoría...</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.full_path}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase ml-2">Precio</label>
-              <input name="price" type="number" placeholder="0.00" className="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-emerald-600" onChange={handleChange} required />
+              <input name="price" type="number" step="0.01" placeholder="0.00" className="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-emerald-600" onChange={handleChange} required />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase ml-2">Stock Inicial</label>
@@ -95,8 +135,8 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
           <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
             {preview.map((src, i) => (
               <div key={i} className="relative flex-shrink-0">
-                <img src={src} className="w-16 h-16 object-cover rounded-xl border-2 border-slate-100" />
-                <button type="button" onClick={() => removeImage(i)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                <img src={src} className="w-16 h-16 object-cover rounded-xl border-2 border-slate-100" alt="Preview" />
+                <button type="button" onClick={() => removeImage(i)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
                   <X size={12} />
                 </button>
               </div>
@@ -135,7 +175,7 @@ export default function Products() {
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.category?.toLowerCase().includes(searchTerm.toLowerCase())
+    p.category_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const deleteProduct = async (id) => {
@@ -166,7 +206,7 @@ export default function Products() {
         name: current.name,
         price: Number(current.price),
         stock: Number(current.stock),
-        category: current.category,
+        category_id: current.category_id,
       });
       setOpenDetail(false);
       loadProducts();
@@ -182,7 +222,6 @@ export default function Products() {
 
       <main className="max-w-5xl mx-auto p-6 space-y-8">
         
-        {/* CABECERA Y BÚSQUEDA */}
         <div className="space-y-6">
           <div className="flex justify-between items-end">
             <div>
@@ -209,7 +248,6 @@ export default function Products() {
           </div>
         </div>
 
-        {/* LISTA DE PRODUCTOS (CARDS) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredProducts.map((p) => {
             const lowStock = p.stock <= 5;
@@ -243,7 +281,7 @@ export default function Products() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[10px] font-bold uppercase tracking-tighter text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md">
-                      {p.category || 'General'}
+                      {p.category_name || 'General'}
                     </span>
                     {lowStock && (
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${criticalStock ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
@@ -296,14 +334,12 @@ export default function Products() {
         )}
       </main>
 
-      {/* MODAL DE CREACIÓN */}
       <CreateProductModal 
         isOpen={openCreate} 
         onClose={() => setOpenCreate(false)} 
         onCreated={loadProducts} 
       />
 
-      {/* MODAL DE EDICIÓN / DETALLE */}
       {openDetail && current && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
           <div className="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[90vh] overflow-y-auto p-8 relative shadow-2xl animate-in fade-in duration-300">
@@ -345,7 +381,7 @@ export default function Products() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase ml-2">Categoría</label>
-                <input className="w-full bg-slate-50 border-none p-4 rounded-2xl font-medium outline-none" value={current.category || ""} onChange={(e) => setCurrent({ ...current, category: e.target.value })} />
+                <input className="w-full bg-slate-50 border-none p-4 rounded-2xl font-medium outline-none" value={current.category_name || ""} onChange={(e) => setCurrent({ ...current, category_name: e.target.value })} />
               </div>
 
               <button className="w-full bg-slate-900 text-white py-5 rounded-2xl font-bold shadow-xl hover:bg-black transition-all active:scale-95">
