@@ -30,6 +30,19 @@ export default function Tools() {
       <main className="px-6 grid grid-cols-2 md:grid-cols-3 gap-4">
 
         <ToolCard
+          to="/tools/finance"
+          icon={<Wallet />}
+          title="Finanzas"
+          desc="Gastos, compras y rentabilidad"
+        />
+
+        <ToolCard
+          to="/tools/discounts"
+          icon={<Sliders />}
+          title="Promociones"
+          desc="Destacados y ofertas"
+        />
+        <ToolCard
           to="/tools/banners"
           icon={<Image />}
           title="Banners"
@@ -48,20 +61,6 @@ export default function Tools() {
           icon={<Layers />}
           title="Imágenes"
           desc="Múltiples por producto"
-        />
-
-        <ToolCard
-          to="/tools/discounts"
-          icon={<Sliders />}
-          title="Promociones"
-          desc="Destacados y ofertas"
-        />
-
-        <ToolCard
-          to="/tools/finance"
-          icon={<Wallet />}
-          title="Finanzas"
-          desc="Gastos, compras y rentabilidad"
         />
 
         <ToolCard

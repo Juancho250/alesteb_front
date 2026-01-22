@@ -14,10 +14,13 @@ import Discounts from "./pages/tools/Discounts";
 import PrivateRoute from "./routes/PrivateRoute";
 import MainLayout from "./components/MainLayout";
 import AutoLogout from "./components/AutoLogout";
+import Categories from "./pages/tools/Categories";
+import { Toaster } from 'react-hot-toast';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-center" reverseOrder={false} />
       <AutoLogout>
         <Routes>
           {/* PUBLIC */}
@@ -44,6 +47,7 @@ export default function App() {
             <Route path="/tools/banners" element={<Banners />} />
             <Route path="/tools/finance" element={<Finance />} />
             <Route path="/tools/discounts" element={<Discounts />} />
+            <Route path="/tools/categories" element={<Categories />} />
           </Route>
         </Routes>
       </AutoLogout>

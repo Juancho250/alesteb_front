@@ -54,6 +54,7 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
@@ -173,6 +174,7 @@ export default function Products() {
       alert("Error al actualizar");
     }
   };
+  
 
   return (
     <div className="pb-24 bg-[#F8FAFC] min-h-screen font-sans">
@@ -212,10 +214,18 @@ export default function Products() {
           {filteredProducts.map((p) => {
             const lowStock = p.stock <= 5;
             const criticalStock = p.stock === 0;
+            const hasDiscount =
+            Number(p.final_price) > 0 && Number(p.final_price) < Number(p.price);
+
+            const discountPercent = hasDiscount
+            ? Math.round(((p.price - p.final_price) / p.price) * 100)
+            : 0;
+
 
             return (
               <div key={p.id} className="bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex items-center gap-5 hover:shadow-md transition-all group">
                 <div className="relative flex-shrink-0">
+
                   {p.main_image ? (
                     <img src={p.main_image} className="w-20 h-20 object-cover rounded-[1.5rem] bg-slate-100" />
                   ) : (
@@ -243,7 +253,21 @@ export default function Products() {
                   </div>
                   <h3 className="font-bold text-slate-800 text-lg leading-tight truncate">{p.name}</h3>
                   <div className="flex items-center gap-3 mt-1 text-slate-500">
-                    <p className="font-black text-slate-900">${Number(p.price).toLocaleString()}</p>
+                    {hasDiscount ? (
+                      <p className="text-sm font-bold text-slate-700">
+                        ${Number(p.price).toLocaleString()}
+                        <span className="mx-2 text-slate-300">→</span>
+                        <span className="text-emerald-600">
+                          ${Number(p.final_price).toLocaleString()}
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="font-black text-slate-900">
+                        ${Number(p.price).toLocaleString()}
+                      </p>
+                    )}
+
+
                     <span className="text-slate-200">|</span>
                     <p className={`text-xs font-bold ${lowStock ? 'text-red-500' : 'text-slate-400'}`}>
                       {p.stock} unidades
