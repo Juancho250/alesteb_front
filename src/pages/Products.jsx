@@ -9,7 +9,13 @@ import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 function CreateProductModal({ isOpen, onClose, onCreated }) {
-  const [form, setForm] = useState({ name: "", price: "", stock: "", category_id: "" });
+  const [form, setForm] = useState({
+    name: "",
+    price: "",
+    stock: "",
+    category_id: "",
+    description: ""
+  });
   const [categories, setCategories] = useState([]);
   const [preview, setPreview] = useState([]);
   const [images, setImages] = useState([]);
@@ -56,6 +62,7 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
       const data = new FormData();
       data.append("name", form.name);
       data.append("price", form.price);
+      data.append("description", form.description);
       data.append("stock", form.stock);
       data.append("category_id", form.category_id);
       images.forEach((img) => data.append("images", img));
@@ -92,6 +99,21 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
               onChange={handleChange} 
               required 
             />
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-2">
+                Descripción
+              </label>
+
+              <textarea
+                name="description"
+                rows={4}
+                placeholder="Describe el producto..."
+                className="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                onChange={handleChange}
+              />
+            </div>
+
             
             <div className="relative">
               <select 
@@ -367,6 +389,21 @@ export default function Products() {
                 <label className="text-xs font-bold text-slate-400 uppercase ml-2">Nombre</label>
                 <input className="w-full bg-slate-50 border-none p-4 rounded-2xl font-bold text-slate-800 outline-none" value={current.name} onChange={(e) => setCurrent({ ...current, name: e.target.value })} required />
               </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase ml-2">
+                  Descripción
+                </label>
+
+                <textarea
+                  rows={4}
+                  className="w-full bg-slate-50 border-none p-4 rounded-2xl font-medium text-slate-800 outline-none resize-none"
+                  value={current.description || ""}
+                  onChange={(e) =>
+                    setCurrent({ ...current, description: e.target.value })
+                  }
+                />
+              </div>
+
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
