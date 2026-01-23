@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  ShoppingCart, Plus, Minus, Trash2, History, 
+  ShoppingCart, Plus, Minus, History, 
   Search, User, CreditCard, CheckCircle2, X, Loader2 
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext"; 
 
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 
 export default function Sales() {
+  const { can } = useAuth();
   const [products, setProducts] = useState([]);
-  const [users, setUsers] = useState([]); // Para la lista de clientes
+  const [users, setUsers] = useState([]); 
   const [cart, setCart] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,18 +25,31 @@ export default function Sales() {
 
   const loadData = async () => {
     try {
-      const [prodRes, userRes] = await Promise.all([
-        api.get("/products"),
-        api.get("/users")
-      ]);
-      setProducts(prodRes.data);
-      setUsers(userRes.data);
+      // 1. Siempre cargamos productos
+      const requests = [api.get("/products")];
+      
+      // 2. Solo intentamos cargar usuarios si tenemos permiso
+      // Se usa 'user.read' para poder buscar clientes en el modal
+      if (can('user.read')) {
+        requests.push(api.get("/users"));
+      }
+
+      const responses = await Promise.all(requests);
+      
+      setProducts(responses[0].data);
+      
+      // Si el segundo request existe (índice 1), llenamos usuarios
+      if (responses[1]) {
+        setUsers(responses[1].data);
+      }
     } catch (err) {
-      console.error("Error cargando datos", err);
+      console.error("Error cargando datos:", err);
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { 
+    loadData(); 
+  }, []);
 
   const addToCart = (product) => {
     const exists = cart.find((p) => p.id === product.id);
@@ -53,8 +68,8 @@ export default function Sales() {
   const total = cart.reduce((sum, p) => sum + p.price * p.quantity, 0);
 
   const handleCheckout = async () => {
+    if (!can('sale.create')) return alert("No tienes autorización para realizar ventas.");
     if (!selectedClient) return alert("Por favor selecciona un cliente");
-    if (cart.length === 0) return alert("El carrito está vacío");
     
     setIsSaving(true);
     try {
@@ -64,7 +79,7 @@ export default function Sales() {
           id: item.id,
           quantity: item.quantity,
           price: item.price,
-          name: item.name // para el log de errores
+          name: item.name 
         })),
         total: total,
         sale_type: 'fisica'
@@ -77,7 +92,6 @@ export default function Sales() {
       setIsModalOpen(false);
       alert("✅ Venta registrada con éxito");
     } catch (err) {
-      // Esto te dirá exactamente qué dijo el servidor
       const errorMsg = err.response?.data?.message || err.message;
       alert("Error del servidor: " + errorMsg);
     } finally {
@@ -85,7 +99,6 @@ export default function Sales() {
     }
   };
 
-  // Filtrar clientes para el buscador del modal
   const filteredUsers = users.filter(u => 
     u.name?.toLowerCase().includes(clientSearch.toLowerCase()) || 
     u.cedula?.includes(clientSearch)
@@ -121,16 +134,13 @@ export default function Sales() {
                   onClick={() => addToCart(p)}
                   className="group p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-blue-500 hover:shadow-md transition-all text-left"
                 >
-                  {/* CONTENEDOR DE IMAGEN */}
                   <div className="w-full h-32 bg-gray-100 rounded-xl mb-3 overflow-hidden">
-                    {p.image_url ? (
+                    {p.image_url || p.main_image ? (
                       <img 
                         src={p.main_image || p.image_url}
                         alt={p.name} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/150?text=Sin+Imagen";
-                        }}
+                        onError={(e) => { e.target.src = "https://via.placeholder.com/150?text=Sin+Imagen"; }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-2xl">
@@ -138,7 +148,6 @@ export default function Sales() {
                       </div>
                     )}
                   </div>
-
                   <p className="font-bold text-gray-800 truncate text-sm">{p.name}</p>
                   <p className="text-blue-600 font-black">${Number(p.price).toLocaleString()}</p>
                 </button>
@@ -153,9 +162,16 @@ export default function Sales() {
               <h2 className="text-lg font-bold flex items-center gap-2">
                 <ShoppingCart className="text-blue-600" /> Resumen
               </h2>
-              <button onClick={() => navigate("/history")} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-blue-600 transition">
-                <History size={20} />
-              </button>
+              {/* BOTÓN HISTORIAL - Requiere sale.read */}
+              {can('sale.read') && (
+                <button 
+                  onClick={() => navigate("/history")} 
+                  className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-blue-600 transition"
+                  title="Ver Historial"
+                >
+                  <History size={20} />
+                </button>
+              )}
             </div>
 
             <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 mb-6">
@@ -186,17 +202,17 @@ export default function Sales() {
 
               <button
                 onClick={() => setIsModalOpen(true)}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || !can('sale.create')} 
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
               >
-                Continuar con la Venta
+                {can('sale.create') ? "Continuar con la Venta" : "Sin permisos de venta"}
               </button>
             </div>
           </div>
         </div>
       </main>
 
-      {/* MODAL DE FINALIZACIÓN (RELACIÓN CON CLIENTE) */}
+      {/* MODAL DE FINALIZACIÓN */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
@@ -205,22 +221,21 @@ export default function Sales() {
               <button onClick={() => setIsModalOpen(false)} className="p-2 bg-gray-100 rounded-full"><X size={20}/></button>
             </div>
 
-            {/* Buscador de Cliente */}
             <div className="mb-6">
               <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1">Seleccionar Cliente</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                   type="text" 
-                  placeholder="Nombre o Cédula..." 
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={can('user.read') ? "Nombre o Cédula..." : "No tienes permiso para buscar clientes"} 
+                  disabled={!can('user.read')}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
                 />
               </div>
 
-              {/* Lista Desplegable de Clientes */}
-              {clientSearch.length > 0 && !selectedClient && (
+              {clientSearch.length > 0 && !selectedClient && can('user.read') && (
                 <div className="mt-2 max-h-40 overflow-y-auto border rounded-xl bg-white shadow-lg">
                   {filteredUsers.map(u => (
                     <button 
@@ -236,7 +251,6 @@ export default function Sales() {
               )}
             </div>
 
-            {/* Cliente Seleccionado Card */}
             {selectedClient && (
               <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -264,7 +278,7 @@ export default function Sales() {
             <button
               onClick={handleCheckout}
               disabled={isSaving || !selectedClient}
-              className="w-full py-4 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-100 transition-all"
+              className="w-full py-4 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all"
             >
               {isSaving ? <Loader2 className="animate-spin" /> : <CheckCircle2 size={20} />}
               {isSaving ? "Procesando..." : "Confirmar Pago"}
