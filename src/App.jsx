@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext"; // 1. Importa el Provider
 import { Toaster } from 'react-hot-toast';
-
-// Páginas
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
@@ -15,34 +13,32 @@ import Users from "./pages/Users";
 import Finance from "./pages/Finance";
 import Discounts from "./pages/tools/Discounts";
 import Categories from "./pages/tools/Categories";
-
-// Componentes de Estructura
 import PrivateRoute from "./routes/PrivateRoute";
 import MainLayout from "./components/MainLayout";
 import AutoLogout from "./components/AutoLogout";
-
+import { LoadingProvider } from "./context/LoadingContext"; // Vite resolverá .jsx automáticamente
 export default function App() {
   return (
-    // 2. AuthProvider DEBE envolver a BrowserRouter para que useAuth funcione
     <AuthProvider>
+      <LoadingProvider>
       <BrowserRouter>
         <Toaster position="top-center" reverseOrder={false} />
         
-        {/* AutoLogout suele ir dentro de las rutas o envolviéndolas */}
         <AutoLogout>
           <Routes>
-            {/* RUTA PÚBLICA */}
+            {/* RUTA PÚBLICA (Sin animación de carga o puedes ponérsela) */}
             <Route path="/login" element={<Login />} />
 
-            {/* RUTAS PRIVADAS (Protegidas por PrivateRoute y dentro de MainLayout) */}
+            {/* RUTAS PRIVADAS */}
             <Route
               element={
                 <PrivateRoute>
-                  <MainLayout />
+                  {/* Envolvemos el Layout para que la carga sea global al navegar */}
+                    <MainLayout />
                 </PrivateRoute>
               }
             >
-              {/* Todas estas rutas renderizarán dentro del Outlet de MainLayout */}
+              {/* Todas las rutas hijas heredan la animación al montarse */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />
               <Route path="/products/new" element={<ProductCreate />} />
@@ -50,7 +46,6 @@ export default function App() {
               <Route path="/history" element={<SalesHistory />} />
               <Route path="/users" element={<Users />} />
 
-              {/* TOOLS - Agrupadas */}
               <Route path="/tools">
                 <Route index element={<Tools />} />
                 <Route path="banners" element={<Banners />} />
@@ -60,11 +55,11 @@ export default function App() {
               </Route>
             </Route>
 
-            {/* 404 - Opcional: Redirigir si la ruta no existe */}
-            <Route path="*" element={<div className="p-10 text-center font-bold">404 - Página no encontrada</div>} />
+            <Route path="*" element={<div className="p-10 text-center font-bold">404</div>} />
           </Routes>
         </AutoLogout>
       </BrowserRouter>
+      </LoadingProvider>
     </AuthProvider>
   );
 }

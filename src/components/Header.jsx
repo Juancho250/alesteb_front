@@ -1,14 +1,16 @@
+// src/components/Header.jsx
 import { LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLayoutEffect, useRef, useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext"; // 1. Importamos el hook
 
 export default function Header() {
   const ref = useRef(null);
   const navigate = useNavigate();
+  const { user, logout } = useAuth(); // 2. Extraemos el usuario y la función logout
   const [isScrolled, setIsScrolled] = useState(false);
   const [greeting, setGreeting] = useState("");
 
-  // 1. Efecto para medir la altura (lo que ya tenías)
   useLayoutEffect(() => {
     if (ref.current) {
       document.documentElement.style.setProperty(
@@ -18,14 +20,12 @@ export default function Header() {
     }
   }, []);
 
-  // 2. Detectar Scroll para cambiar el diseño
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
     window.addEventListener("scroll", handleScroll);
     
-    // Saludo según la hora
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("¡Buen día!");
     else if (hour < 18) setGreeting("¡Buenas tardes!");
@@ -34,9 +34,9 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // 3. Usamos la función logout del contexto para que limpie todo correctamente
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+    logout(); 
   };
 
   return (
@@ -48,7 +48,6 @@ export default function Header() {
           : "h-20 bg-transparent"
       }`}
     >
-      {/* SECCIÓN IZQUIERDA: LOGO */}
       <div className="flex items-center gap-3">
         <div className={`flex items-center justify-center rounded-xl transition-all duration-300 ${
           isScrolled ? "w-8 h-8 bg-blue-600 shadow-none" : "w-10 h-10 bg-slate-900 shadow-xl shadow-blue-500/20"
@@ -69,14 +68,25 @@ export default function Header() {
         </div>
       </div>
 
-      {/* SECCIÓN DERECHA: PERFIL Y SALIR */}
       <div className="flex items-center gap-3">
-        {/* Avatar de Usuario (Estético) */}
+        {/* 4. SECCIÓN DINÁMICA: Muestra el nombre del usuario */}
         <div className="hidden sm:flex items-center gap-2 pr-2 border-r border-slate-200">
-           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-             <User size={16} />
+           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 overflow-hidden border border-slate-200">
+             {user?.avatar ? (
+               <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
+             ) : (
+               <User size={16} />
+             )}
            </div>
-           <span className="text-xs font-bold text-slate-600">Admin</span>
+           <div className="flex flex-col items-start leading-none">
+             {/* Cambia 'user.name' por la propiedad exacta que devuelva tu API (ej: user.username o user.first_name) */}
+             <span className="text-xs font-black text-slate-800 uppercase tracking-tighter">
+               {user?.name || "Sin nombre"}
+             </span>
+             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+               {user?.roles?.[0] || "Miembro"}
+             </span>
+           </div>
         </div>
 
         <button

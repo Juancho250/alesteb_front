@@ -20,3 +20,53 @@ body {
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
+@keyframes progress {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+/* Cambiar el color de la barra de carga */
+#nprogress .bar {
+  background: #0080ff !important; /* El azul que usas en tus botones */
+  height: 3px !important;
+}
+
+/* Cambiar el color del resplandor (glow) */
+#nprogress .peg {
+  box-shadow: 0 0 10px #0071e3, 0 0 5px #0071e3 !important;
+}
+
+/* En tu index.css */
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1.5s infinite ease-in-out;
+}
+
+/* index.css o App.css */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink {
+  50% { border-color: transparent; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-200%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-typewriter {
+  animation: 
+    typewriter 1.5s steps(40, end) forwards,
+    blink 0.8s step-end infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
