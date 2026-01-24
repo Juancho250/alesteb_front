@@ -135,7 +135,7 @@ function BannerModal({ open, onClose, banner, onSaved }) {
 // --- COMPONENTE PRINCIPAL ---
 export default function Banners() {
   const { user } = useAuth(); 
-  const permissions = user?.permissions || [];
+  const permissions = user?.permissions || [];  // Obtener permisos del usuario
 
   const [banners, setBanners] = useState([]);
   const [openModal, setOpenModal] = useState(false);
@@ -147,14 +147,18 @@ export default function Banners() {
     try {
       const res = await api.get("/banners");
       setBanners(res.data);
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+      console.error(error);
+    }
   };
 
   const toggleActive = async (banner) => {
     try {
       await api.put(`/banners/${banner.id}`, { ...banner, is_active: !banner.is_active });
       loadBanners();
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+      console.error(error); 
+    }
   };
 
   const deleteBanner = async (id) => {
@@ -162,7 +166,9 @@ export default function Banners() {
     try {
       await api.delete(`/banners/${id}`);
       loadBanners();
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+      console.error(error); 
+    }
   };
 
   return (
@@ -173,6 +179,8 @@ export default function Banners() {
           <h1 className="text-3xl font-bold">Banners</h1>
           <p className="text-gray-500">Administración de publicidad</p>
         </div>
+
+        {/* Verificar permiso de creación de banner */}
         {permissions.includes('banner.create') && (
           <button onClick={() => { setSelectedBanner(null); setOpenModal(true); }} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl flex gap-2">
             <Plus size={18} /> Nuevo banner
@@ -189,6 +197,7 @@ export default function Banners() {
               <p className="text-sm text-gray-500">{banner.description}</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Verificar permiso de edición y activación */}
               {permissions.includes('banner.update') && (
                 <>
                   <button onClick={() => toggleActive(banner)} className={`px-4 py-1.5 rounded-lg text-xs font-bold ${banner.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
@@ -199,6 +208,7 @@ export default function Banners() {
                   </button>
                 </>
               )}
+              {/* Verificar permiso de eliminación */}
               {permissions.includes('banner.delete') && (
                 <button onClick={() => deleteBanner(banner.id)} className="p-2 hover:bg-red-50 text-red-600 rounded-lg">
                   <Trash2 size={18} />
@@ -209,6 +219,7 @@ export default function Banners() {
         ))}
       </section>
 
+      {/* Modal de creación y edición */}
       <BannerModal open={openModal} onClose={() => setOpenModal(false)} banner={selectedBanner} onSaved={loadBanners} />
       <BottomNav />
     </div>

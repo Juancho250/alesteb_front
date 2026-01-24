@@ -3,8 +3,12 @@ import { Plus, Trash2, Tag, X, CheckCircle2, Loader2, Edit3, Calendar, Percent, 
 import api from "../../services/api";
 import Header from "../../components/Header";
 import BottomNav from "../../components/BottomNav";
+import { useAuth } from "../../context/AuthContext"; 
 
 export default function Discounts() {
+  const { user } = useAuth(); 
+  const permissions = user?.permissions || []; // Obtener permisos del usuario
+
   const [discounts, setDiscounts] = useState([]);
   const [products, setProducts] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -82,13 +86,16 @@ export default function Discounts() {
             <h2 className="text-4xl font-bold tracking-tight text-slate-900">Ofertas</h2>
             <p className="text-slate-500 mt-1 font-medium">Gestiona tus campañas activas</p>
           </div>
-          <button 
-            onClick={handleOpenCreate} 
-            className="group flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-600 transition-all duration-300 shadow-xl shadow-slate-200 active:scale-95"
-          >
-            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-            <span className="font-semibold text-sm">Crear</span>
-          </button>
+          {/* Verificar permiso de creación de descuentos */}
+          {permissions.includes('discount.create') && (
+            <button 
+              onClick={handleOpenCreate} 
+              className="group flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-600 transition-all duration-300 shadow-xl shadow-slate-200 active:scale-95"
+            >
+              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+              <span className="font-semibold text-sm">Crear</span>
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -130,16 +137,22 @@ export default function Discounts() {
                     </div>
                   </div>
                   
+
                   <div className="flex flex-col items-end gap-3">
                     <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${d.type === 'percentage' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
                       {d.type === 'percentage' ? `-${d.value}%` : `-$${d.value}`}
                     </span>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <button onClick={() => handleEditClick(d)} className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><Edit3 size={18}/></button>
-                      <button 
-                        onClick={async () => { if(confirm("¿Eliminar este descuento?")) { await api.delete(`/discounts/${d.id}`); loadData(); } }}
-                        className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                      ><Trash2 size={18}/></button>
+                      {/* Verificar permisos de editar y eliminar descuentos */}
+                      {permissions.includes('discount.update') && (
+                        <button onClick={() => handleEditClick(d)} className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><Edit3 size={18}/></button>
+                      )}
+                      {permissions.includes('discount.delete') && (
+                        <button 
+                          onClick={async () => { if(confirm("¿Eliminar este descuento?")) { await api.delete(`/discounts/${d.id}`); loadData(); } }}
+                          className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        ><Trash2 size={18}/></button>
+                      )}
                     </div>
                   </div>
                 </div>

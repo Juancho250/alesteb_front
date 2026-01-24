@@ -11,7 +11,7 @@ import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 
 export default function Sales() {
-  const { can } = useAuth();
+  const { can } = useAuth(); // Obtener permisos del usuario
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]); 
   const [cart, setCart] = useState([]);
@@ -29,7 +29,6 @@ export default function Sales() {
       const requests = [api.get("/products")];
       
       // 2. Solo intentamos cargar usuarios si tenemos permiso
-      // Se usa 'user.read' para poder buscar clientes en el modal
       if (can('user.read')) {
         requests.push(api.get("/users"));
       }

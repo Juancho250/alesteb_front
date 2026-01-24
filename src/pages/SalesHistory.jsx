@@ -7,8 +7,10 @@ import {
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
+import { useAuth } from "../context/AuthContext";  // Importando contexto de permisos
 
 export default function SalesHistory() {
+  const { can } = useAuth();  // Obtener permisos del usuario
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
   const [items, setItems] = useState([]); // Items de la venta seleccionada
@@ -79,6 +81,8 @@ export default function SalesHistory() {
   }, [searchTerm, filterType, dateFilter, sales]);
 
   const viewDetail = async (sale) => {
+    if (!can('sale.read')) return alert("No tienes permisos para ver los detalles de la venta.");
+
     setCurrentSale(sale); // Seteamos la venta actual inmediatamente
     setItems([]); // Limpiamos items previos
     setOpen(true); // Abrimos modal
@@ -101,6 +105,7 @@ export default function SalesHistory() {
   };
 
   const handlePrint = () => {
+    if (!can('sale.print')) return alert("No tienes permisos para imprimir.");
     window.print();
   };
 
@@ -325,6 +330,7 @@ export default function SalesHistory() {
                      </div>
                  </div>
 
+                 
                  {/* Info Factura */}
                  <div className="flex justify-between text-[10px] font-bold uppercase mb-4">
                      <span>Factura: #{currentSale.id}</span>

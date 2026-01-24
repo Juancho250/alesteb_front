@@ -15,6 +15,12 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth(); // Usamos la función del contexto
 
+  const token = jwt.sign(
+    { id: user.id, roles, permissions },
+    process.env.JWT_SECRET, // Usando la clave secreta desde el archivo .env
+    { expiresIn: '8h' }
+  );
+
   const submit = async (e) => {
     e.preventDefault();
     setError("");

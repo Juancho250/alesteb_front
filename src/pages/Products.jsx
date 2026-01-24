@@ -1,5 +1,4 @@
-import { 
-  Plus, Trash2, Eye, X, Upload, 
+import { PlusCircle, Trash2, Eye, X, Upload, 
   Package, ShoppingBag, AlertCircle, Search 
 } from "lucide-react";
 import api from "../services/api";
@@ -7,8 +6,12 @@ import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useAuth } from "../context/AuthContext"; 
 
 function CreateProductModal({ isOpen, onClose, onCreated }) {
+  const { user } = useAuth(); // Obtener permisos del usuario
+  const permissions = user?.permissions || [];
+
   const [form, setForm] = useState({
     name: "",
     price: "",
@@ -56,7 +59,7 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.category_id) return alert("Por favor selecciona una categoría");
-    
+
     setLoading(true);
     try {
       const data = new FormData();
@@ -79,6 +82,7 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
@@ -174,8 +178,11 @@ function CreateProductModal({ isOpen, onClose, onCreated }) {
   );
 }
 
-// --- COMPONENTE PRINCIPAL ---
+// --- COMPONENTE PRINCIPAL --- 
 export default function Products() {
+  const { user } = useAuth();
+  const permissions = user?.permissions || []; // Obtener permisos del usuario
+  
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [openDetail, setOpenDetail] = useState(false);
@@ -236,7 +243,6 @@ export default function Products() {
       alert("Error al actualizar");
     }
   };
-  
 
   return (
     <div className="pb-24 bg-[#F8FAFC] min-h-screen font-sans">
@@ -250,12 +256,14 @@ export default function Products() {
               <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Inventario</p>
               <h2 className="text-3xl font-black text-slate-800">Tus Productos</h2>
             </div>
-            <button
-              onClick={() => setOpenCreate(true)}
-              className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl hover:bg-black transition-all active:scale-90"
-            >
-              <Plus size={24} />
-            </button>
+            {permissions.includes('products.create') && (
+              <button
+                onClick={() => setOpenCreate(true)}
+                className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl hover:bg-black transition-all active:scale-90"
+              >
+                <Plus size={24} />
+              </button>
+            )}
           </div>
 
           <div className="relative">
@@ -281,11 +289,9 @@ export default function Products() {
             ? Math.round(((p.price - p.final_price) / p.price) * 100)
             : 0;
 
-
             return (
               <div key={p.id} className="bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex items-center gap-5 hover:shadow-md transition-all group">
                 <div className="relative flex-shrink-0">
-
                   {p.main_image ? (
                     <img src={p.main_image} className="w-20 h-20 object-cover rounded-[1.5rem] bg-slate-100" />
                   ) : (
@@ -326,8 +332,6 @@ export default function Products() {
                         ${Number(p.price).toLocaleString()}
                       </p>
                     )}
-
-
                     <span className="text-slate-200">|</span>
                     <p className={`text-xs font-bold ${lowStock ? 'text-red-500' : 'text-slate-400'}`}>
                       {p.stock} unidades
@@ -336,12 +340,16 @@ export default function Products() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => openPreview(p)} className="p-3 bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all shadow-sm">
-                    <Eye size={18} />
-                  </button>
-                  <button onClick={() => deleteProduct(p.id)} className="p-3 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm">
-                    <Trash2 size={18} />
-                  </button>
+                  {permissions.includes('products.read') && (
+                    <button onClick={() => openPreview(p)} className="p-3 bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white rounded-xl transition-all shadow-sm">
+                      <Eye size={18} />
+                    </button>
+                  )}
+                  {permissions.includes('products.delete') && (
+                    <button onClick={() => deleteProduct(p.id)} className="p-3 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm">
+                      <Trash2 size={18} />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -361,7 +369,7 @@ export default function Products() {
         onClose={() => setOpenCreate(false)} 
         onCreated={loadProducts} 
       />
-
+      
       {openDetail && current && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
           <div className="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[90vh] overflow-y-auto p-8 relative shadow-2xl animate-in fade-in duration-300">

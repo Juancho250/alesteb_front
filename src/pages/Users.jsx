@@ -40,7 +40,7 @@ export default function Users() {
     try {
       console.log("Iniciando carga de datos...");
       
-      // Cargamos por separado para que si uno falla, el otro no se detenga
+      // Cargar usuarios y permisos por separado
       const usersRes = await api.get("/users").catch(err => {
         console.error("Error en /users:", err);
         return { data: [] };
@@ -51,16 +51,14 @@ export default function Users() {
         return { data: [] };
       });
 
-      console.log("Respuesta de Usuarios:", usersRes.data);
+      console.log("Respuesta de Permisos:", permsRes.data); // Aquí puedes revisar los permisos
 
-      // VALIDACIÓN DE ESTRUCTURA:
-      // Si tu API devuelve { data: [...] }, usa res.data.data
       const userData = Array.isArray(usersRes.data) 
         ? usersRes.data 
         : (usersRes.data?.data || []);
 
-      setUsers(userData);
-      setAvailablePermissions(permsRes.data || []);
+      setUsers(userData);  // Asignar usuarios
+      setAvailablePermissions(permsRes.data || []);  // Asignar permisos
 
     } catch (err) {
       console.error("Error crítico en fetchData:", err);
@@ -69,22 +67,23 @@ export default function Users() {
     }
   };
 
-  useEffect(() => { 
-    fetchData(); 
-  }, []);
 
-  // Lógica para marcar/desmarcar permisos
-  const togglePermission = (id) => {
-    setFormData(prev => {
-      const isSelected = prev.permissions.includes(id);
-      return {
-        ...prev,
-        permissions: isSelected 
-          ? prev.permissions.filter(pId => pId !== id) 
-          : [...prev.permissions, id]
-      };
-    });
-  };
+    useEffect(() => { 
+      fetchData(); 
+    }, []);
+
+    // Lógica para marcar/desmarcar permisos
+    const togglePermission = (id) => {
+      setFormData(prev => {
+        const isSelected = prev.permissions.includes(id);
+        return {
+          ...prev,
+          permissions: isSelected 
+            ? prev.permissions.filter(pId => pId !== id) 
+            : [...prev.permissions, id]
+        };
+      });
+    };
 
   const openCreateModal = () => {
     setIsEditing(false);
@@ -104,11 +103,11 @@ export default function Users() {
       address: user.address || "",
       role_id: user.role_id || 2,
       password: "",
-      // Mapeamos los permisos actuales del usuario si el backend los envía
-      permissions: user.permissions?.map(p => p.id) || [] 
+      permissions: user.permissions?.map(p => p.id) || [] // Asegúrate de mapear los permisos correctamente
     });
     setIsModalOpen(true);
   };
+
 
   const handleDeleteUser = async (id) => {
     if (!window.confirm("¿Estás seguro de eliminar este usuario?")) return;
@@ -216,15 +215,16 @@ export default function Users() {
               <div key={user.id} className="group bg-white p-5 rounded-[1.5rem] border border-slate-100 hover:border-[#0071e3]/30 hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 relative overflow-hidden">
                 <div className="absolute top-4 right-4 flex gap-2 z-20">
                     {can('user.update') && (
-                        <button onClick={() => openEditModal(user)} className="p-2 bg-slate-50 text-slate-400 hover:bg-[#0071e3] hover:text-white rounded-full transition-all border border-slate-100">
-                          <Edit3 size={16} />
-                        </button>
+                      <button onClick={() => openEditModal(user)} className="p-2 bg-slate-50 text-slate-400 hover:bg-[#0071e3] hover:text-white rounded-full transition-all border border-slate-100">
+                        <Edit3 size={16} />
+                      </button>
                     )}
                     {can('user.delete') && (
-                        <button onClick={() => handleDeleteUser(user.id)} className="p-2 bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white rounded-full transition-all border border-slate-100">
-                          <Trash2 size={16} />
-                        </button>
+                      <button onClick={() => handleDeleteUser(user.id)} className="p-2 bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white rounded-full transition-all border border-slate-100">
+                        <Trash2 size={16} />
+                      </button>
                     )}
+
                 </div>
 
                 <div className="relative z-10">
@@ -308,7 +308,7 @@ export default function Users() {
                       {formData.permissions.length} activos
                     </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1">
                     {availablePermissions.map((perm) => (
                       <div 

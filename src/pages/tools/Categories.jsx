@@ -4,10 +4,14 @@ import { toast } from "react-hot-toast";
 import api from "../../services/api";
 import Header from "../../components/Header";
 import BottomNav from "../../components/BottomNav";
+import { useAuth } from "../../context/AuthContext"; 
 
 const Categories = () => {
-  const [categories, setCategories] = useState([]); // Árbol
-  const [flatCategories, setFlatCategories] = useState([]); // Select
+  const { user } = useAuth();
+  const permissions = user?.permissions || []; // Obtener permisos del usuario
+
+  const [categories, setCategories] = useState([]);
+  const [flatCategories, setFlatCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -89,14 +93,17 @@ const Categories = () => {
                 {node.slug && <p className="text-[10px] text-slate-400 font-mono">/{node.slug}</p>}
               </div>
             </div>
-            
+
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
-                onClick={() => handleDelete(node.id)}
-                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 size={16} />
-              </button>
+              {/* Verificar permiso de eliminación */}
+              {permissions.includes('category.delete') && (
+                <button 
+                  onClick={() => handleDelete(node.id)}
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
             </div>
           </div>
           {node.children && node.children.length > 0 && renderTree(node.children)}
@@ -116,13 +123,17 @@ const Categories = () => {
             <h2 className="text-4xl font-bold tracking-tight text-slate-900">Categorías</h2>
             <p className="text-slate-500 mt-1 font-medium">Organiza tu catálogo de productos</p>
           </div>
-          <button 
-            onClick={handleOpenCreate} 
-            className="group flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-600 transition-all duration-300 shadow-xl shadow-slate-200 active:scale-95"
-          >
-            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-            <span className="font-semibold text-sm">Añadir</span>
-          </button>
+          
+          {/* Verificar permiso de creación de categorías */}
+          {permissions.includes('category.create') && (
+            <button 
+              onClick={handleOpenCreate} 
+              className="group flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-600 transition-all duration-300 shadow-xl shadow-slate-200 active:scale-95"
+            >
+              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+              <span className="font-semibold text-sm">Añadir</span>
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -143,7 +154,7 @@ const Categories = () => {
           </div>
         ) : (
           <div className="-ml-4">
-             {renderTree(categories)}
+            {renderTree(categories)}
           </div>
         )}
       </main>
@@ -159,7 +170,7 @@ const Categories = () => {
               </div>
               <button onClick={() => setShowModal(false)} className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-colors"><X size={20}/></button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 ml-1">Nombre de categoría</label>

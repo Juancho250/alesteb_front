@@ -13,12 +13,19 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem("token");
 
     if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-      // Configurar el token en axios para futuras peticiones
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      try {
+        // Solo hacer el parse si el usuario existe en localStorage
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        // Configurar el token en axios para futuras peticiones
+        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      } catch (error) {
+        console.error("Error al parsear el usuario almacenado", error);
+      }
     }
     setLoading(false);
   }, []);
+
 
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
@@ -35,9 +42,10 @@ export const AuthProvider = ({ children }) => {
 
     // 3. Actualizar estado
     setUser(userData);
-    
+
     return userData; // Retornamos para que el Login sepa que tuvo éxito
   };
+
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -56,6 +64,7 @@ export const AuthProvider = ({ children }) => {
     // Verificar si tiene el permiso específico
     return user.permissions?.includes(permissionSlug);
   };
+
 
   return (
     <AuthContext.Provider value={{ user, login, logout, can, loading }}>
