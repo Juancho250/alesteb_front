@@ -9,9 +9,14 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
+import { useLoading } from "../context/LoadingContext";
+// 1. IMPORTAR EL CONTEXTO DE AVISOS
+import { useNotice } from "../context/NoticeContext";
 
 export default function Sales() {
-  const { can } = useAuth(); // Obtener permisos del usuario
+  const { startLoading, stopLoading } = useLoading();
+  const { showNotice, askConfirmation } = useNotice(); // Extraer funciones
+  const { can } = useAuth(); 
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]); 
   const [cart, setCart] = useState([]);
@@ -24,31 +29,25 @@ export default function Sales() {
   const navigate = useNavigate();
 
   const loadData = async () => {
+    startLoading();
     try {
-      // 1. Siempre cargamos productos
       const requests = [api.get("/products")];
-      
-      // 2. Solo intentamos cargar usuarios si tenemos permiso
       if (can('user.read')) {
         requests.push(api.get("/users"));
       }
-
       const responses = await Promise.all(requests);
-      
       setProducts(responses[0].data);
-      
-      // Si el segundo request existe (índice 1), llenamos usuarios
       if (responses[1]) {
         setUsers(responses[1].data);
       }
     } catch (err) {
-      console.error("Error cargando datos:", err);
+      showNotice("Error al cargar productos", "error");
+    } finally {
+      setTimeout(stopLoading, 800);
     }
   };
 
-  useEffect(() => { 
-    loadData(); 
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const addToCart = (product) => {
     const exists = cart.find((p) => p.id === product.id);
@@ -56,6 +55,7 @@ export default function Sales() {
       setCart(cart.map((p) => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p));
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);
+      // Alerta eliminada para mayor fluidez
     }
   };
 
@@ -66,11 +66,13 @@ export default function Sales() {
 
   const total = cart.reduce((sum, p) => sum + p.price * p.quantity, 0);
 
+  // 2. LÓGICA DE PAGO ACTUALIZADA CON AVISOS
   const handleCheckout = async () => {
-    if (!can('sale.create')) return alert("No tienes autorización para realizar ventas.");
-    if (!selectedClient) return alert("Por favor selecciona un cliente");
-    
+    if (!can('sale.create')) return showNotice("No tienes permiso para vender", "error");
+    if (!selectedClient) return showNotice("Selecciona un cliente primero", "warning");
+
     setIsSaving(true);
+    startLoading();
     try {
       const saleData = {
         customer_id: selectedClient.id,
@@ -86,15 +88,16 @@ export default function Sales() {
 
       await api.post("/sales", saleData);
       
+      showNotice("Venta realizada con éxito", "success");
       setCart([]);
       setSelectedClient(null);
       setIsModalOpen(false);
-      alert("✅ Venta registrada con éxito");
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message;
-      alert("Error del servidor: " + errorMsg);
+      const errorMsg = err.response?.data?.message || "Error al procesar la venta";
+      showNotice(errorMsg, "error");
     } finally {
       setIsSaving(false);
+      stopLoading();
     }
   };
 
@@ -102,7 +105,7 @@ export default function Sales() {
     u.name?.toLowerCase().includes(clientSearch.toLowerCase()) || 
     u.cedula?.includes(clientSearch)
   );
-
+  
   return (
     <div className="pb-24 bg-gray-50 min-h-screen">
       <Header />

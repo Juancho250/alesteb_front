@@ -9,9 +9,11 @@ import {
   User, Users as UsersIcon, Edit3, Trash2, 
   ShieldAlert, Key, ShieldCheck, CheckCircle2
 } from "lucide-react";
-import { useLoading } from "../context/LoadingContext"; // <--- Importar el nuevo contexto
+import { useLoading } from "../context/LoadingContext";
+import { useNotice } from "../context/NoticeContext";
 
 export default function Users() {
+  const { showNotice, askConfirmation } = useNotice();
   const { startLoading, stopLoading } = useLoading(); // <--- Extraer funciones
   const { can } = useAuth(); 
   const [users, setUsers] = useState([]);
@@ -125,16 +127,23 @@ export default function Users() {
 
 
   const handleDeleteUser = async (id) => {
-    if (!window.confirm("¿Estás seguro?")) return;
+  // 2. Llamas a la confirmación global con un await
+    const confirmed = await askConfirmation(
+      "¿Eliminar Usuario?", 
+      "Esta acción no se puede deshacer. El usuario perderá el acceso."
+    );
+
+    if (!confirmed) return; // Si cancela, no hace nada
     
-    startLoading(); // <--- INICIAR ANIMACIÓN
+    startLoading();
     try {
       await api.delete(`/users/${id}`);
       setUsers(users.filter(u => u.id !== id));
+      showNotice("Usuario eliminado con éxito"); // Alerta de éxito
     } catch (err) {
-      alert("Error al eliminar");
+      showNotice("No se pudo eliminar el registro", "error"); // Alerta de error
     } finally {
-      stopLoading(); // <--- DETENER ANIMACIÓN
+      stopLoading();
     }
   };
 
@@ -173,11 +182,11 @@ export default function Users() {
       fetchData(); 
       
       // Opcional: Una pequeña alerta de éxito
-      alert(isEditing ? "Actualizado correctamente" : "Creado correctamente");
+      showNotice(isEditing ? "Usuario actualizado correctamente" : "Usuario creado correctamente");
 
     } catch (err) {
       console.error("Error en el guardado:", err);
-      alert("Error: " + (err.response?.data?.message || err.message));
+      showNotice("Error: " + (err.response?.data?.message || err.message));
     } finally {
       setIsSaving(false);
       stopLoading();

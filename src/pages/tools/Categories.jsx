@@ -5,11 +5,12 @@ import api from "../../services/api";
 import Header from "../../components/Header";
 import BottomNav from "../../components/BottomNav";
 import { useAuth } from "../../context/AuthContext"; 
+import { useLoading } from "../../context/LoadingContext";
 
 const Categories = () => {
   const { user } = useAuth();
   const permissions = user?.permissions || []; // Obtener permisos del usuario
-
+  const { startLoading, stopLoading } = useLoading();
   const [categories, setCategories] = useState([]);
   const [flatCategories, setFlatCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,7 @@ const Categories = () => {
   }, []);
 
   const fetchData = async () => {
+    startLoading();
     setLoading(true);
     try {
       const [treeRes, flatRes] = await Promise.all([
@@ -39,6 +41,7 @@ const Categories = () => {
       console.error(error);
     } finally {
       setLoading(false);
+      setTimeout(stopLoading, 800);
     }
   };
 
@@ -49,6 +52,7 @@ const Categories = () => {
   };
 
   const handleSubmit = async (e) => {
+    startLoading();
     e.preventDefault();
     if (!form.name.trim()) return toast.error("El nombre es obligatorio");
 
@@ -65,9 +69,13 @@ const Categories = () => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Error al guardar");
     }
+    finally {
+      setTimeout(stopLoading, 800);
+    }
   };
 
   const handleDelete = async (id) => {
+    startLoading();
     if (!window.confirm("¿Estás seguro? Se eliminarán también las subcategorías.")) return;
     try {
       await api.delete(`/categories/${id}`);
@@ -75,6 +83,9 @@ const Categories = () => {
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || "No se pudo eliminar");
+    }
+    finally {
+      setTimeout(stopLoading, 800);
     }
   };
 

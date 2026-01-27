@@ -1,28 +1,27 @@
 import { Link } from "react-router-dom";
 import { 
   Image,
-  Layers,
   Tags,
   Sliders,
   Settings,
-  Wallet
+  Wallet,
+  Truck // Icono ideal para Proveedores
 } from "lucide-react";
-import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
-
 
 export default function Tools() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <Header />
+      
       {/* HEADER */}
       <header className="px-6 pt-8 pb-6">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 italic tracking-tight">
           Herramientas
         </h1>
-        <p className="text-gray-500 mt-1">
-          Administra contenido y configuraciones del sistema
+        <p className="text-gray-500 mt-1 text-sm font-medium">
+          Administra contenido y la logística del sistema
         </p>
       </header>
 
@@ -31,41 +30,42 @@ export default function Tools() {
 
         <ToolCard
           to="/tools/finance"
-          icon={<Wallet />}
+          icon={<Wallet className="text-emerald-500" />}
           title="Finanzas"
-          desc="Gastos, compras y rentabilidad"
+          desc="Gastos, compras y flujo"
+        />
+
+        <ToolCard
+          to="/tools/providers"
+          icon={<Truck className="text-blue-600" />}
+          title="Proveedores"
+          desc="Contacto, deudas y logística"
         />
 
         <ToolCard
           to="/tools/discounts"
-          icon={<Sliders />}
+          icon={<Sliders className="text-purple-500" />}
           title="Promociones"
           desc="Destacados y ofertas"
         />
+
         <ToolCard
           to="/tools/banners"
-          icon={<Image />}
+          icon={<Image className="text-amber-500" />}
           title="Banners"
           desc="Carrusel principal"
         />
 
         <ToolCard
           to="/tools/categories"
-          icon={<Tags />}
+          icon={<Tags className="text-rose-500" />}
           title="Categorías"
           desc="Organiza productos"
         />
 
         <ToolCard
-          to="/tools/images"
-          icon={<Layers />}
-          title="Imágenes"
-          desc="Múltiples por producto"
-        />
-
-        <ToolCard
           to="/tools/settings"
-          icon={<Settings />}
+          icon={<Settings className="text-slate-600" />}
           title="Configuración"
           desc="Sistema general"
         />
@@ -75,7 +75,6 @@ export default function Tools() {
     </div>
   );
 }
-
 /* =========================
    COMPONENTE CARD
 ========================= */

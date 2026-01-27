@@ -8,8 +8,10 @@ import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 import { useAuth } from "../context/AuthContext";  // Importando contexto de permisos
+import { useLoading } from "../context/LoadingContext";
 
 export default function SalesHistory() {
+  const { startLoading, stopLoading } = useLoading();
   const { can } = useAuth();  // Obtener permisos del usuario
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
@@ -34,6 +36,7 @@ export default function SalesHistory() {
   };
 
   const loadSales = async () => {
+    startLoading();
     try {
       const res = await api.get("/sales");
       const data = res.data.map(s => ({
@@ -52,6 +55,7 @@ export default function SalesHistory() {
       }
     } finally {
       setLoading(false);
+      setTimeout(stopLoading, 800);
     }
   };
 
