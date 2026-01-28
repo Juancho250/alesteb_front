@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import {
-  DollarSign, Package, ShoppingCart, Plus, AlertTriangle,
-  TrendingUp, BarChart3, ArrowUpRight, Wallet, CalendarDays,
-  ChevronRight, AlertCircle, ShoppingBag, Layers
+  DollarSign, Package, Plus, AlertTriangle,
+  TrendingUp, BarChart3, Wallet, Layers,
+  AlertCircle, ShoppingBag
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart,
-  Bar, CartesianGrid, Area, AreaChart, Cell, PieChart, Pie
+  Bar, CartesianGrid, Area, AreaChart, Cell
 } from "recharts";
 
 import api from "../services/api";
@@ -17,7 +17,7 @@ import StatCard from "../components/StatCard";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("top"); // 'top' | 'stock' | 'revenue'
+  const [activeTab, setActiveTab] = useState("top"); 
   const [stats, setStats] = useState({
     salesToday: 0, productsCount: 0, lowStock: 0, avgTicket: 0, inventoryValue: 0
   });
@@ -38,11 +38,11 @@ export default function Dashboard() {
       const salesData = salesRes?.data || [];
       const productsData = productsRes?.data || [];
 
-      // Procesamiento de Alertas
+      // 1. REGISTROS: Alertas de bajo stock
       const lowItems = productsData.filter(p => Number(p.stock || 0) <= 5);
       setLowStockProducts(lowItems);
 
-      // Procesamiento de Métricas
+      // 2. RESÚMENES: Procesamiento de Métricas
       const todaySales = salesData.filter(s => new Date(s.created_at).toDateString() === new Date().toDateString());
       const totalToday = todaySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
       const avg = salesData.length > 0 ? salesData.reduce((sum, s) => sum + Number(s.total), 0) / salesData.length : 0;
@@ -56,7 +56,7 @@ export default function Dashboard() {
         inventoryValue: invValue
       });
 
-      // Gráfica de Ventas
+      // 3. GRÁFICAS: Tendencia de Ventas
       const grouped = {};
       salesData.slice(-15).forEach((s) => {
         const day = new Date(s.created_at).toLocaleDateString(undefined, { weekday: 'short' });
@@ -64,19 +64,27 @@ export default function Dashboard() {
       });
       setSalesChart(Object.entries(grouped).map(([name, total]) => ({ name, total })));
 
-      // Ranking de Productos
+      // Ranking para visualización
       setTopProducts(productsData.slice(0, 6).map(p => ({
         name: p.name.length > 12 ? p.name.substring(0, 10) + '..' : p.name,
         qty: Math.floor(Math.random() * 50) + 10,
         stock: p.stock
       })));
 
-    } catch (error) { console.error(error); } finally { setLoading(false); }
+    } catch (error) { 
+      console.error("Dashboard Load Error:", error); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const COLORS = ['#6366f1', '#8b5cf6', '#3b82f6', '#0ea5e9', '#10b981'];
 
-  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-bold text-slate-400 animate-pulse text-sm uppercase tracking-widest">Sincronizando...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center font-bold text-slate-400 animate-pulse text-sm uppercase tracking-widest">
+      Sincronizando Sistema...
+    </div>
+  );
 
   return (
     <div className="pb-28 bg-[#F8FAFC] min-h-screen font-sans">
@@ -84,7 +92,7 @@ export default function Dashboard() {
 
       <main className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-6">
         
-        {/* FILA 1: MINI STATS (Métrica Compacta) */}
+        {/* --- SECCIÓN: RESÚMENES (Mini Stats) --- */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <StatCard title="Ventas Hoy" value={`$${stats.salesToday.toLocaleString()}`} icon={<DollarSign size={16} className="text-blue-600" />} />
           <StatCard title="Ticket Prom" value={`$${stats.avgTicket.toLocaleString(undefined, {maximumFractionDigits: 0})}`} icon={<Wallet size={16} className="text-emerald-600" />} />
@@ -92,9 +100,8 @@ export default function Dashboard() {
           <StatCard title="Bajo Stock" value={stats.lowStock} icon={<AlertTriangle size={16} className={stats.lowStock > 0 ? "text-red-500" : "text-slate-300"} />} />
         </div>
 
+        {/* --- SECCIÓN: GRÁFICAS PRINCIPALES --- */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          
-          {/* GRÁFICA PRINCIPAL (8 columnas) */}
           <div className="xl:col-span-8 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
             <div className="flex justify-between items-end mb-6">
               <div>
@@ -103,7 +110,6 @@ export default function Dashboard() {
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold text-emerald-500 flex items-center gap-1 justify-end"><TrendingUp size={12}/> +4.5%</p>
-                <p className="text-[10px] text-slate-400 font-medium italic">Vs semana anterior</p>
               </div>
             </div>
             <div className="h-[220px]">
@@ -124,40 +130,38 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ACCIONES RÁPIDAS (4 columnas) */}
           <div className="xl:col-span-4 grid grid-cols-1 gap-4">
             <div className="bg-slate-900 rounded-3xl p-6 text-white relative overflow-hidden flex flex-col justify-center">
-               <h4 className="text-sm font-bold opacity-70 mb-4">Atajos Directos</h4>
-               <div className="flex flex-col gap-2">
-                  <button onClick={() => navigate("/sales")} className="w-full bg-white/10 hover:bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between text-sm font-bold transition-all">
-                    Nueva Venta <Plus size={16}/>
-                  </button>
-                  <button onClick={() => navigate("/products/new")} className="w-full bg-white/10 hover:bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between text-sm font-bold transition-all">
-                    Nuevo Producto <ShoppingBag size={16}/>
-                  </button>
-               </div>
-               <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-indigo-500/20 rounded-full blur-2xl"></div>
+                <h4 className="text-sm font-bold opacity-70 mb-4">Atajos Directos</h4>
+                <div className="flex flex-col gap-2">
+                   <button onClick={() => navigate("/sales")} className="w-full bg-white/10 hover:bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between text-sm font-bold transition-all">
+                     Nueva Venta <Plus size={16}/>
+                   </button>
+                   <button onClick={() => navigate("/products/new")} className="w-full bg-white/10 hover:bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between text-sm font-bold transition-all">
+                     Nuevo Producto <ShoppingBag size={16}/>
+                   </button>
+                </div>
             </div>
             
             <div className="bg-white rounded-3xl p-6 border border-slate-100 flex items-center justify-between">
-               <div>
+                <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total SKUs</p>
                   <p className="text-2xl font-black text-slate-800">{stats.productsCount}</p>
-               </div>
-               <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl">
+                </div>
+                <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl">
                   <Layers size={20} />
-               </div>
+                </div>
             </div>
           </div>
         </div>
 
-        {/* SECCIÓN DE TABS (TIPO AMAZON) */}
+        {/* --- SECCIÓN: REGISTROS Y DISTRIBUCIÓN (Tabs) --- */}
         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex border-b border-slate-50 overflow-x-auto bg-slate-50/50">
             {[
               { id: 'top', label: 'Más Vendidos', icon: <TrendingUp size={14}/> },
               { id: 'stock', label: 'Bajo Stock', icon: <AlertCircle size={14}/> },
-              { id: 'revenue', label: 'Distribución', icon: <PieChartIcon size={14}/> }
+              { id: 'revenue', label: 'Gráfica Distribución', icon: <BarChart3 size={14}/> }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -173,11 +177,11 @@ export default function Dashboard() {
             {activeTab === 'top' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {topProducts.map((p, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200">
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-transparent hover:border-slate-200">
                     <div className="w-10 h-10 flex items-center justify-center bg-white rounded-xl font-black text-indigo-600 shadow-sm border border-slate-100 italic">#{i+1}</div>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-slate-800 leading-tight">{p.name}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">{p.qty} ventas este mes</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{p.qty} ventas</p>
                     </div>
                   </div>
                 ))}
@@ -192,10 +196,10 @@ export default function Dashboard() {
                       <div className="p-2 bg-red-100 text-red-600 rounded-lg"><AlertTriangle size={14}/></div>
                       <p className="text-sm font-bold text-slate-700">{p.name}</p>
                     </div>
-                    <span className="text-xs font-black text-red-600 bg-white px-3 py-1 rounded-full shadow-sm">{p.stock} unidades</span>
+                    <span className="text-xs font-black text-red-600 bg-white px-3 py-1 rounded-full shadow-sm">{p.stock} uds</span>
                   </div>
                 )) : (
-                  <p className="text-center py-10 text-slate-300 font-bold italic text-sm">Inventario saludable ✨</p>
+                  <p className="text-center py-10 text-slate-300 font-bold italic text-sm">Inventario al día ✨</p>
                 )}
               </div>
             )}
@@ -221,9 +225,4 @@ export default function Dashboard() {
       <BottomNav />
     </div>
   );
-}
-
-// Icono auxiliar para el tab
-function PieChartIcon({size}) {
-  return <BarChart3 size={size} />;
 }

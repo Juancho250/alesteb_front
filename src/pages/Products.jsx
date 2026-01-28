@@ -1,8 +1,4 @@
-import { 
-  Plus, Trash2, Eye, X, Upload, 
-  Package, ShoppingBag, AlertCircle, Search,
-  Save, Edit2, CheckCircle2 // <--- Agregado CheckCircle2
-} from "lucide-react";
+import { Plus, Trash2, Eye, X, Upload, Package, ShoppingBag, AlertCircle, Search, Save, Edit2 } from "lucide-react";
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
@@ -16,7 +12,7 @@ import ConfirmModal from "../components/ConfirmModal";
 function ProductDetailModal({ openDetail, current, setOpenDetail, categories, refreshProducts, showNotice }) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -74,7 +70,7 @@ function ProductDetailModal({ openDetail, current, setOpenDetail, categories, re
     const totalRemaining = remainingExisting + newImages.length;
 
     if (totalRemaining < 1) {
-      showNotice("El producto debe tener al menos una imagen.", "error"); // <--- Ahora sí existe
+      showNotice("El producto debe tener al menos una imagen.", "error");
       return;
     }
     setDeletedImageIds([...deletedImageIds, imgId]);
@@ -91,7 +87,7 @@ function ProductDetailModal({ openDetail, current, setOpenDetail, categories, re
       data.append('price', formData.price);
       data.append('stock', formData.stock);
       data.append('category_id', formData.category_id);
-      
+
       if (deletedImageIds.length > 0) {
         data.append('deleted_image_ids', JSON.stringify(deletedImageIds));
       }
@@ -104,12 +100,12 @@ function ProductDetailModal({ openDetail, current, setOpenDetail, categories, re
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      showNotice("Producto actualizado correctamente", "success"); // Aviso de éxito
+      showNotice("Producto actualizado correctamente", "success");
       setOpenDetail(false);
       if (refreshProducts) refreshProducts();
     } catch (error) {
       console.error(error);
-      showNotice("Error al actualizar el producto", "error"); // Aviso de error
+      showNotice("Error al actualizar el producto", "error");
     } finally {
       setLoading(false);
     }
@@ -122,126 +118,125 @@ function ProductDetailModal({ openDetail, current, setOpenDetail, categories, re
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
       <div className="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[90vh] overflow-y-auto p-8 relative shadow-2xl animate-in fade-in duration-300 custom-scrollbar">
-        
         <button onClick={() => setOpenDetail(false)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 z-10 transition-colors">
-            <X size={20} />
+          <X size={20} />
         </button>
 
         <div className="flex justify-between items-center mb-6 pr-10">
-            <h3 className="text-2xl font-black text-slate-800">
-                {isEditing ? "Editar Producto" : "Detalles"}
-            </h3>
-            {!isEditing && (
-                <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-xl font-bold hover:bg-blue-100 transition-colors">
-                    <Edit2 size={16} /> Editar
-                </button>
-            )}
+          <h3 className="text-2xl font-black text-slate-800">
+            {isEditing ? "Editar Producto" : "Detalles"}
+          </h3>
+          {!isEditing && (
+            <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 text-blue-600 bg-blue-50 px-4 py-2 rounded-xl font-bold hover:bg-blue-100 transition-colors">
+              <Edit2 size={16} /> Editar
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-                <div className="relative group w-full h-64 bg-slate-100 rounded-[2rem] overflow-hidden border-4 border-slate-50 shadow-inner">
-                    <img 
-                        src={visibleExistingImages[0]?.url || newImagesPreview[0] || current.main_image} 
-                        className="w-full h-full object-cover" 
-                        alt="Main"
-                    />
-                </div>
-
-                {isEditing && (
-                    <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed border-slate-200">
-                        <p className="text-xs font-bold text-slate-400 uppercase mb-3">Gestión de Fotos</p>
-                        <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                            {visibleExistingImages.map((img) => (
-                                <div key={img.id} className="relative flex-shrink-0 w-20 h-20 group">
-                                    <img src={img.url} className="w-full h-full object-cover rounded-xl border border-slate-200" />
-                                    <button type="button" onClick={() => markImageForDeletion(img.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-transform hover:scale-110">
-                                        <X size={12} />
-                                    </button>
-                                </div>
-                            ))}
-                            {newImagesPreview.map((src, i) => (
-                                <div key={`new-${i}`} className="relative flex-shrink-0 w-20 h-20">
-                                    <img src={src} className="w-full h-full object-cover rounded-xl border-2 border-blue-200 opacity-90" />
-                                    <button type="button" onClick={() => removeNewImage(i)} className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1 shadow-md hover:bg-blue-600">
-                                        <X size={12} />
-                                    </button>
-                                </div>
-                            ))}
-                            <label className="flex-shrink-0 w-20 h-20 flex flex-col items-center justify-center border-2 border-slate-300 border-dashed rounded-xl cursor-pointer hover:bg-slate-100 hover:border-blue-400 transition-all text-slate-400 hover:text-blue-500">
-                                <Upload size={20} />
-                                <span className="text-[10px] font-bold mt-1">Agregar</span>
-                                <input type="file" multiple accept="image/*" onChange={handleNewImages} className="hidden" />
-                            </label>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="space-y-4">
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-2">Nombre</label>
-                    {isEditing ? (
-                        <input name="name" value={formData.name} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500" required />
-                    ) : (
-                        <div className="w-full p-4 font-bold text-slate-800 text-lg">{formData.name}</div>
-                    )}
-                </div>
-
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-2">Descripción</label>
-                    {isEditing ? (
-                        <textarea name="description" rows={4} value={formData.description} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-                    ) : (
-                        <div className="w-full p-4 font-medium text-slate-600 bg-slate-50/50 rounded-2xl">{formData.description || "Sin descripción"}</div>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase ml-2">Precio ($)</label>
-                        {isEditing ? (
-                            <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500" required />
-                        ) : (
-                            <div className="w-full p-4 font-black text-emerald-600 text-xl">${formData.price}</div>
-                        )}
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase ml-2">Stock</label>
-                        {isEditing ? (
-                            <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-black text-slate-800 outline-none focus:ring-2 focus:ring-blue-500" required />
-                        ) : (
-                            <div className="w-full p-4 font-black text-slate-800 text-xl">{formData.stock} u.</div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-2">Categoría</label>
-                    {isEditing ? (
-                        <div className="relative">
-                            <select name="category_id" value={formData.category_id} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer">
-                                <option value="">Seleccionar...</option>
-                                {categories && categories.map((cat) => (
-                                    <option key={cat.id} value={cat.id}>{cat.full_path || cat.name}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                        </div>
-                    ) : (
-                        <div className="w-full p-4 font-medium text-slate-800 bg-slate-50 rounded-2xl">{formData.category_name || "Sin categoría"}</div>
-                    )}
-                </div>
+          <div className="space-y-4">
+            <div className="relative group w-full h-64 bg-slate-100 rounded-[2rem] overflow-hidden border-4 border-slate-50 shadow-inner">
+              <img 
+                src={visibleExistingImages[0]?.url || newImagesPreview[0] || current.main_image} 
+                className="w-full h-full object-cover" 
+                alt="Main"
+              />
             </div>
 
             {isEditing && (
-                <div className="flex gap-3 pt-4 border-t border-slate-100">
-                    <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-colors">Cancelar</button>
-                    <button type="submit" disabled={loading} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-black transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
-                        {loading ? "Guardando..." : <><Save size={20} /> Guardar Cambios</>}
-                    </button>
+              <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed border-slate-200">
+                <p className="text-xs font-bold text-slate-400 uppercase mb-3">Gestión de Fotos</p>
+                <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                  {visibleExistingImages.map((img) => (
+                    <div key={img.id} className="relative flex-shrink-0 w-20 h-20 group">
+                      <img src={img.url} className="w-full h-full object-cover rounded-xl border border-slate-200" />
+                      <button type="button" onClick={() => markImageForDeletion(img.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-transform hover:scale-110">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {newImagesPreview.map((src, i) => (
+                    <div key={`new-${i}`} className="relative flex-shrink-0 w-20 h-20">
+                      <img src={src} className="w-full h-full object-cover rounded-xl border-2 border-blue-200 opacity-90" />
+                      <button type="button" onClick={() => removeNewImage(i)} className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1 shadow-md hover:bg-blue-600">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="flex-shrink-0 w-20 h-20 flex flex-col items-center justify-center border-2 border-slate-300 border-dashed rounded-xl cursor-pointer hover:bg-slate-100 hover:border-blue-400 transition-all text-slate-400 hover:text-blue-500">
+                    <Upload size={20} />
+                    <span className="text-[10px] font-bold mt-1">Agregar</span>
+                    <input type="file" multiple accept="image/*" onChange={handleNewImages} className="hidden" />
+                  </label>
                 </div>
+              </div>
             )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-2">Nombre</label>
+              {isEditing ? (
+                <input name="name" value={formData.name} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500" required />
+              ) : (
+                <div className="w-full p-4 font-bold text-slate-800 text-lg">{formData.name}</div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-2">Descripción</label>
+              {isEditing ? (
+                <textarea name="description" rows={4} value={formData.description} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              ) : (
+                <div className="w-full p-4 font-medium text-slate-600 bg-slate-50/50 rounded-2xl">{formData.description || "Sin descripción"}</div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400 uppercase ml-2">Precio ($)</label>
+                {isEditing ? (
+                  <input type="number" name="price" value={formData.price} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500" required />
+                ) : (
+                  <div className="w-full p-4 font-black text-emerald-600 text-xl">${formData.price}</div>
+                )}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400 uppercase ml-2">Stock</label>
+                {isEditing ? (
+                  <input type="number" name="stock" value={formData.stock} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-black text-slate-800 outline-none focus:ring-2 focus:ring-blue-500" required />
+                ) : (
+                  <div className="w-full p-4 font-black text-slate-800 text-xl">{formData.stock} u.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-2">Categoría</label>
+              {isEditing ? (
+                <div className="relative">
+                  <select name="category_id" value={formData.category_id} onChange={handleChange} className="w-full bg-slate-100 p-4 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer">
+                    <option value="">Seleccionar...</option>
+                    {categories && categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.full_path || cat.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                </div>
+              ) : (
+                <div className="w-full p-4 font-medium text-slate-800 bg-slate-50 rounded-2xl">{formData.category_name || "Sin categoría"}</div>
+              )}
+            </div>
+          </div>
+
+          {isEditing && (
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
+              <button type="button" onClick={() => setIsEditing(false)} className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-colors">Cancelar</button>
+              <button type="submit" disabled={loading} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-black transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+                {loading ? "Guardando..." : <><Save size={20} /> Guardar Cambios</>}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>
@@ -286,9 +281,9 @@ function CreateProductModal({ isOpen, onClose, onCreated, categories, showNotice
   const submit = async (e) => {
     e.preventDefault();
     if (!form.category_id) {
-      return showNotice("Por favor selecciona una categoría", "error"); // <--- Ahora funcionará
+      return showNotice("Por favor selecciona una categoría", "error");
     }
-    
+
     setLoading(true);
     try {
       const data = new FormData();
@@ -300,8 +295,8 @@ function CreateProductModal({ isOpen, onClose, onCreated, categories, showNotice
       images.forEach((img) => data.append("images", img));
 
       await api.post("/products", data);
-      
-      showNotice("Producto creado con éxito", "success"); // Aviso de éxito
+
+      showNotice("Producto creado con éxito", "success");
       onCreated();
       onClose();
       setForm({ name: "", price: "", stock: "", category_id: "", description: "" });
@@ -309,11 +304,12 @@ function CreateProductModal({ isOpen, onClose, onCreated, categories, showNotice
       setImages([]);
     } catch (err) {
       const errorMsg = err.response?.data?.message || "Error al guardar producto";
-      showNotice(errorMsg, "error"); // Aviso de error
+      showNotice(errorMsg, "error");
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
