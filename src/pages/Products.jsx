@@ -8,7 +8,7 @@ import { useLoading } from "../context/LoadingContext";
 import Toast from "../components/Toast"; 
 import ConfirmModal from "../components/ConfirmModal";
 
-// --- NUEVO COMPONENTE DE DETALLE/EDICIÓN ---
+// --- COMPONENTE DE DETALLE/EDICIÓN ---
 function ProductDetailModal({ openDetail, current, setOpenDetail, categories, refreshProducts, showNotice }) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -243,7 +243,7 @@ function ProductDetailModal({ openDetail, current, setOpenDetail, categories, re
   );
 }
 
-// --- MODAL CREAR (Lo dejamos igual) ---
+// --- MODAL CREAR ---
 function CreateProductModal({ isOpen, onClose, onCreated, categories, showNotice }) {
   const [form, setForm] = useState({
     name: "",
@@ -252,10 +252,6 @@ function CreateProductModal({ isOpen, onClose, onCreated, categories, showNotice
     category_id: "",
     description: ""
   });
-  // NOTA: Ahora las categorías vienen por props para no hacer doble llamada,
-  // pero mantendré tu lógica original si prefieres, aunque ajustada abajo.
-  // Para simplificar, usaremos las props si vienen, o el estado local si no.
-  // En este código completo, las pasaré desde el padre (Products).
   
   const [preview, setPreview] = useState([]);
   const [images, setImages] = useState([]);
@@ -309,7 +305,6 @@ function CreateProductModal({ isOpen, onClose, onCreated, categories, showNotice
       setLoading(false);
     }
   };
-
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
@@ -405,13 +400,14 @@ function CreateProductModal({ isOpen, onClose, onCreated, categories, showNotice
 export default function Products() {
   const { startLoading, stopLoading } = useLoading();
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]); // <--- AGREGADO: Categorías en el padre
+  const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [openDetail, setOpenDetail] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
   const [current, setCurrent] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   const [confirm, setConfirm] = useState({ show: false, id: null });
+  
   const showNotice = (message, type = "success") => {
     setToast({ show: true, message, type });
   };
@@ -419,34 +415,36 @@ export default function Products() {
   const loadProducts = async () => {
     startLoading();
     try {
-      // Cargamos productos y categorías en paralelo
       const [productsRes, categoriesRes] = await Promise.all([
         api.get("/products"),
         api.get("/categories/flat")
       ]);
 
-      setProducts(productsRes.data);
+      // ✅ CORRECCIÓN: Accede a productsRes.data.products en lugar de productsRes.data
+      const productsData = productsRes.data.products || productsRes.data;
+      
+      setProducts(productsData);
       setCategories(categoriesRes.data);
       
-      localStorage.setItem("products_cache", JSON.stringify(productsRes.data));
+      localStorage.setItem("products_cache", JSON.stringify(productsData));
     } catch (err) {
       console.error(err);
       const cached = localStorage.getItem("products_cache");
       if (cached) setProducts(JSON.parse(cached));
-    }
-    finally {
+    } finally {
       setTimeout(stopLoading, 800);
     }
   };
 
   useEffect(() => { loadProducts(); }, []);
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.category_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = Array.isArray(products) 
+    ? products.filter(p => 
+        p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.category_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
 
-  // 1. Reemplazo del confirm() tradicional
   const handleDeleteClick = (id) => {
     setConfirm({ show: true, id });
   };
@@ -454,16 +452,15 @@ export default function Products() {
   const executeDelete = async () => {
     try {
       await api.delete(`/products/${confirm.id}`);
-      showNotice("Producto eliminado correctamente"); // Toast de éxito
+      showNotice("Producto eliminado correctamente");
       loadProducts();
     } catch (err) {
-      showNotice("No se pudo eliminar el producto", "error"); // Toast de error
+      showNotice("No se pudo eliminar el producto", "error");
     } finally {
       setConfirm({ show: false, id: null });
     }
   };
 
-  // 2. Reemplazo del alert en carga de detalles
   const openPreview = async (product) => {
     try {
       const res = await api.get(`/products/${product.id}`);
@@ -589,7 +586,7 @@ export default function Products() {
         onClose={() => setOpenCreate(false)} 
         onCreated={loadProducts} 
         categories={categories}
-        showNotice={showNotice} // <--- Agregamos esto
+        showNotice={showNotice}
       />
 
       <ProductDetailModal
@@ -598,7 +595,7 @@ export default function Products() {
         setOpenDetail={setOpenDetail}
         refreshProducts={loadProducts}
         categories={categories}
-        showNotice={showNotice} // <--- Agregamos esto
+        showNotice={showNotice}
       />
       
       {toast.show && (
@@ -609,9 +606,6 @@ export default function Products() {
         />
       )}
 
-      {/* El ConfirmModal no suele necesitar showNotice directamente 
-          porque la lógica de éxito/error la maneja el padre en executeDelete,
-          lo cual ya tienes bien configurado. */}
       <ConfirmModal 
         isOpen={confirm.show}
         title="¿Estás seguro?"

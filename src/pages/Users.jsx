@@ -2,22 +2,19 @@ import { useState, useEffect } from "react";
 import api from "../services/api"; 
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
-import { useAuth } from "../context/AuthContext"; 
 import { 
   Search, UserPlus, Phone, Mail, X, 
-  Loader2, Save, CreditCard, MapPin, 
-  User, Users as UsersIcon, Edit3, Trash2, 
-  ShieldAlert, Key, ShieldCheck, CheckCircle2
+  Loader2, Save, CreditCard, 
+  User, Edit3, Trash2, 
+  ShieldCheck
 } from "lucide-react";
 import { useLoading } from "../context/LoadingContext";
 import { useNotice } from "../context/NoticeContext";
 
 export default function Users() {
   const { showNotice, askConfirmation } = useNotice();
-  const { startLoading, stopLoading } = useLoading(); // <--- Extraer funciones
-  const { can } = useAuth(); 
+  const { startLoading, stopLoading } = useLoading();
   const [users, setUsers] = useState([]);
-  const [availablePermissions, setAvailablePermissions] = useState([]); // Lista global de permisos
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -28,87 +25,43 @@ export default function Users() {
   const initialFormState = { 
     id: null, name: "", email: "", phone: "", 
     cedula: "", city: "", address: "",
-    role_id: 3, // <--- CAMBIA DE 2 A 23
-    password: "",
-    permissions: []
+    role_id: 3,
+    password: ""
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  // Carga inicial de datos
+  // Carga inicial de usuarios
   const fetchData = async () => {
-    if (!can('user.read')) {
-      setLoading(false);
-      return;
-    }
     startLoading();
     try {
-      // Usamos Promise.allSettled para que si falla uno, el otro siga funcionando
-      const results = await Promise.allSettled([
-        api.get("/users"),
-        api.get("/permissions")
-      ]);
-
-      const usersResult = results[0];
-      const permsResult = results[1];
-
-      // Procesar Usuarios
-      if (usersResult.status === 'fulfilled') {
-        const usersRes = usersResult.value;
-        const userData = usersRes.data?.data || usersRes.data || [];
-        setUsers(Array.isArray(userData) ? userData : []);
-      } else {
-        console.error("Error cargando usuarios:", usersResult.reason);
-      }
-
-      // Procesar Permisos
-      if (permsResult.status === 'fulfilled') {
-        const permsRes = permsResult.value;
-        const permissionsData = permsRes.data?.data || permsRes.data || [];
-        setAvailablePermissions(Array.isArray(permissionsData) ? permissionsData : []);
-      } else {
-        console.error("Error cargando permisos:", permsResult.reason);
-      }
-
+      const response = await api.get("/users");
+      // El backend devuelve directamente el array
+      const userData = response.data;
+      setUsers(Array.isArray(userData) ? userData : []);
     } catch (err) {
-      console.error("Error general:", err);
+      console.error("Error cargando usuarios:", err);
+      showNotice("Error al cargar usuarios", "error");
     } finally {
       setLoading(false);
       setTimeout(stopLoading, 800);
     }
   };
 
-
-    useEffect(() => { 
-      fetchData(); 
-    }, []);
-
-    // Lógica para marcar/desmarcar permisos
-    const togglePermission = (id) => {
-      const numericId = Number(id); // Forzar a número
-      setFormData(prev => {
-        const isSelected = prev.permissions.includes(numericId);
-        return {
-          ...prev,
-          permissions: isSelected 
-            ? prev.permissions.filter(pId => pId !== numericId) 
-            : [...prev.permissions, numericId]
-        };
-      });
-    };
+  useEffect(() => { 
+    fetchData(); 
+  }, []);
 
   const openCreateModal = () => {
-  setIsEditing(false);
-  setFormData({
-    ...initialFormState,
-    role_id: 3, // Valor por defecto para clientes
-    permissions: [] // Limpiar permisos previos
-  });
-  setIsModalOpen(true);
-};
+    setIsEditing(false);
+    setFormData({
+      ...initialFormState,
+      role_id: 3,
+    });
+    setIsModalOpen(true);
+  };
 
   const openEditModal = (user) => {
     setIsEditing(true);
-    
     setFormData({
       id: user.id,
       name: user.name || "",
@@ -117,36 +70,31 @@ export default function Users() {
       cedula: user.cedula || "",
       city: user.city || "",
       address: user.address || "",
-      role_id: user.role_id || 2,
-      password: "", // SIEMPRE vacío al abrir para editar
-      // Mapeo de permisos: verifica si tu API devuelve 'permissions' o 'roles'
-      permissions: user.permissions?.map(p => typeof p === 'object' ? p.id : p) || []
+      role_id: user.role_id || 3,
+      password: ""
     });
     setIsModalOpen(true);
   };
 
-
   const handleDeleteUser = async (id) => {
-  // 2. Llamas a la confirmación global con un await
     const confirmed = await askConfirmation(
       "¿Eliminar Usuario?", 
       "Esta acción no se puede deshacer. El usuario perderá el acceso."
     );
 
-    if (!confirmed) return; // Si cancela, no hace nada
+    if (!confirmed) return;
     
     startLoading();
     try {
       await api.delete(`/users/${id}`);
       setUsers(users.filter(u => u.id !== id));
-      showNotice("Usuario eliminado con éxito"); // Alerta de éxito
+      showNotice("Usuario eliminado con éxito");
     } catch (err) {
-      showNotice("No se pudo eliminar el registro", "error"); // Alerta de error
+      showNotice("No se pudo eliminar el registro", "error");
     } finally {
       stopLoading();
     }
   };
-
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
@@ -154,39 +102,25 @@ export default function Users() {
     startLoading();
 
     try {
-      // 1. Limpieza de datos antes de enviar
       const cleanData = {
         ...formData,
-        // Si es cliente (2), nos aseguramos de que los permisos vayan vacíos
-        permissions: formData.role_id === 1 ? formData.permissions : [],
-        // No enviar email vacío como string, mejor null si tu DB lo permite
-        email: formData.email.trim() || null,
-        phone: formData.phone.trim() || null
+        email: formData.email.trim(),
+        phone: formData.phone.trim()
       };
 
-      // 2. Manejo de contraseña en edición
-      if (isEditing && !cleanData.password) {
-        delete cleanData.password;
-      }
-
-      // 3. Petición
       if (isEditing) {
+        if (!cleanData.password) delete cleanData.password;
         await api.put(`/users/${formData.id}`, cleanData);
       } else {
         await api.post("/users", cleanData);
       }
       
       setIsModalOpen(false);
-      // IMPORTANTE: Resetear el formulario al estado inicial
       setFormData(initialFormState);
       fetchData(); 
-      
-      // Opcional: Una pequeña alerta de éxito
-      showNotice(isEditing ? "Usuario actualizado correctamente" : "Usuario creado correctamente");
-
+      showNotice(isEditing ? "Usuario actualizado" : "Usuario creado con éxito");
     } catch (err) {
-      console.error("Error en el guardado:", err);
-      showNotice("Error: " + (err.response?.data?.message || err.message));
+      showNotice("Error: " + (err.response?.data?.message || err.message), "error");
     } finally {
       setIsSaving(false);
       stopLoading();
@@ -208,7 +142,7 @@ export default function Users() {
         <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-slate-900">Usuarios y Clientes</h1>
-            <p className="text-slate-500 font-medium text-sm mt-1">Administra accesos y permisos del sistema</p>
+            <p className="text-slate-500 font-medium text-sm mt-1">Administra accesos del sistema</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -217,15 +151,13 @@ export default function Users() {
                 <span className="text-xl font-black text-slate-800">{users.length}</span>
              </div>
              
-             {can('user.create') && (
-                 <button 
-                    onClick={openCreateModal}
-                    className="bg-[#0071e3] hover:bg-[#0077ed] text-white px-5 py-3 rounded-2xl shadow-lg shadow-blue-500/30 flex items-center gap-2 font-bold transition-all active:scale-95"
-                 >
-                    <UserPlus size={20} />
-                    <span>Nuevo Registro</span>
-                 </button>
-             )}
+             <button 
+                onClick={openCreateModal}
+                className="bg-[#0071e3] hover:bg-[#0077ed] text-white px-5 py-3 rounded-2xl shadow-lg shadow-blue-500/30 flex items-center gap-2 font-bold transition-all active:scale-95"
+             >
+                <UserPlus size={20} />
+                <span>Nuevo Registro</span>
+             </button>
           </div>
         </div>
 
@@ -249,26 +181,16 @@ export default function Users() {
                 <Loader2 className="animate-spin mb-3 text-[#0071e3]" size={32} />
                 <p className="font-medium text-sm">Sincronizando base de datos...</p>
              </div>
-          ) : !can('user.read') ? (
-            <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border border-red-100">
-               <ShieldAlert className="mx-auto mb-4 text-red-400" size={48} />
-               <p className="text-slate-800 font-bold text-lg">Acceso Restringido</p>
-            </div>
           ) : filteredUsers.length > 0 ? (
             filteredUsers.map(user => (
               <div key={user.id} className="group bg-white p-5 rounded-[1.5rem] border border-slate-100 hover:border-[#0071e3]/30 hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 relative overflow-hidden">
                 <div className="absolute top-4 right-4 flex gap-2 z-20">
-                    {can('user.update') && (
-                      <button onClick={() => openEditModal(user)} className="p-2 bg-slate-50 text-slate-400 hover:bg-[#0071e3] hover:text-white rounded-full transition-all border border-slate-100">
-                        <Edit3 size={16} />
-                      </button>
-                    )}
-                    {can('user.delete') && (
-                      <button onClick={() => handleDeleteUser(user.id)} className="p-2 bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white rounded-full transition-all border border-slate-100">
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-
+                    <button onClick={() => openEditModal(user)} className="p-2 bg-slate-50 text-slate-400 hover:bg-[#0071e3] hover:text-white rounded-full transition-all border border-slate-100">
+                      <Edit3 size={16} />
+                    </button>
+                    <button onClick={() => handleDeleteUser(user.id)} className="p-2 bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white rounded-full transition-all border border-slate-100">
+                      <Trash2 size={16} />
+                    </button>
                 </div>
 
                 <div className="relative z-10">
@@ -315,9 +237,7 @@ export default function Users() {
             <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center">
                 <div>
                     <h2 className="text-xl font-black text-slate-800">{isEditing ? "Editar Perfil" : "Nuevo Registro"}</h2>
-                    <div className="flex items-center gap-1 text-xs text-slate-500 font-medium mt-0.5">
-                      <ShieldAlert size={12} className="text-[#0071e3]"/> Configuración de accesos
-                    </div>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">Configuración de accesos</p>
                 </div>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 bg-white text-slate-400 hover:text-red-500 rounded-full transition-colors border border-slate-100">
                     <X size={20} />
@@ -332,7 +252,7 @@ export default function Users() {
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     type="button" 
-                    onClick={() => setFormData({...formData, role_id: 3})} // <--- CAMBIA DE 2 A 23
+                    onClick={() => setFormData({...formData, role_id: 3})}
                     className={`py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                       formData.role_id === 3 ? 'border-[#0071e3] bg-blue-50 text-[#0071e3]' : 'border-slate-100 text-slate-400'
                     }`}
@@ -345,47 +265,6 @@ export default function Users() {
                   </button>
                 </div>
               </div>
-
-              {/* SECCIÓN DINÁMICA DE PERMISOS (Solo si es Admin) */}
-              {formData.role_id === 1 && (
-                <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
-                      <Key size={12} className="text-amber-500"/> Permisos de Admin
-                    </span>
-                    <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">
-                      {formData.permissions.length} activos
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1">
-                    {availablePermissions.map((perm) => (
-                      <div 
-                        key={perm.id}
-                        onClick={() => togglePermission(perm.id)}
-                        className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${
-                          formData.permissions.includes(perm.id) 
-                            ? 'bg-white border-amber-200 shadow-sm' 
-                            : 'bg-transparent border-transparent opacity-60'
-                        }`}
-                      >
-                        <div className="flex flex-col">
-                          {/* Ajusta 'name' o 'description' según tu base de datos */}
-                          <span className="text-xs font-bold text-slate-700">
-                            {perm.name || perm.description} 
-                          </span>
-                          <span className="text-[9px] font-mono text-slate-400">{perm.slug}</span>
-                        </div>
-                        {formData.permissions.includes(perm.id) ? (
-                          <CheckCircle2 size={16} className="text-amber-500" />
-                        ) : (
-                          <div className="w-4 h-4 rounded-full border-2 border-slate-200" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Datos Personales */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -409,29 +288,25 @@ export default function Users() {
                  </div>
                  <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Email</label>
-                    <input type="email" className="w-full px-4 py-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-[#0071e3] outline-none transition-all" 
+                    <input type="email" required className="w-full px-4 py-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-[#0071e3] outline-none transition-all" 
                       placeholder="email@correo.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                  </div>
               </div>
 
-              {/* Campo de Contraseña: SOLO visible si el rol es ADMIN (id 1) */}
-              {formData.role_id === 1 && (
+              {/* Contraseña (solo para admin o nuevo usuario) */}
+              {(formData.role_id === 1 || !isEditing) && (
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                    Contraseña *
+                    Contraseña {!isEditing && "*"}
                   </label>
-                  <div className="relative">
-                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                    <input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      value={formData.password} 
-                      onChange={e => setFormData({...formData, password: e.target.value})}
-                      // Solo es required si es Admin y es un registro nuevo (o si quieres obligar a cambiarla al editar)
-                      required={formData.role_id === 1 && !isEditing}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-[#0071e3] outline-none transition-all" 
-                    />
-                  </div>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})}
+                    required={!isEditing}
+                    className="w-full px-4 py-3 bg-slate-50 border border-transparent rounded-xl focus:bg-white focus:border-[#0071e3] outline-none transition-all" 
+                  />
                 </div>
               )}
 

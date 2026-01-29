@@ -35,15 +35,17 @@ export default function Dashboard() {
         api.get("/products"),
       ]);
 
-      const salesData = salesRes?.data || [];
-      const productsData = productsRes?.data || [];
+      // VALIDACIÓN CRÍTICA: Aseguramos que siempre sean arreglos
+      const salesData = Array.isArray(salesRes?.data) ? salesRes.data : [];
+      const productsData = Array.isArray(productsRes?.data) ? productsRes.data : [];
 
       // 1. REGISTROS: Alertas de bajo stock
       const lowItems = productsData.filter(p => Number(p.stock || 0) <= 5);
       setLowStockProducts(lowItems);
 
       // 2. RESÚMENES: Procesamiento de Métricas
-      const todaySales = salesData.filter(s => new Date(s.created_at).toDateString() === new Date().toDateString());
+      const todaySales = salesData.filter(s => s.created_at && new Date(s.created_at).toDateString() === new Date().toDateString());
+      // ... resto de tu lógica de totales
       const totalToday = todaySales.reduce((sum, s) => sum + Number(s.total || 0), 0);
       const avg = salesData.length > 0 ? salesData.reduce((sum, s) => sum + Number(s.total), 0) / salesData.length : 0;
       const invValue = productsData.reduce((sum, p) => sum + (Number(p.stock) * Number(p.price)), 0);

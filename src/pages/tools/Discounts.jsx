@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Tag, X, CheckCircle2, Loader2, Edit3, Calendar, Percent, DollarSign, Package, Layers } from "lucide-react";
+import { Plus, Trash2, Tag, X, CheckCircle2, Edit3, Calendar, Percent, DollarSign, Package, Layers } from "lucide-react";
 import api from "../../services/api";
 import Header from "../../components/Header";
 import BottomNav from "../../components/BottomNav";
-import { useAuth } from "../../context/AuthContext"; 
+import { useLoading } from "../../context/LoadingContext";
+import { useNotice } from "../../context/NoticeContext";
 
 export default function Discounts() {
-  const { user } = useAuth(); 
-  const permissions = user?.permissions || []; // Obtener permisos del usuario
+  const { startLoading, stopLoading } = useLoading();
+  const { showNotice, askConfirmation } = useNotice();
 
   const [discounts, setDiscounts] = useState([]);
   const [products, setProducts] = useState([]);
@@ -25,14 +26,24 @@ export default function Discounts() {
 
   const loadData = async () => {
     setLoading(true);
+    startLoading();
     try {
       const [resP, resD] = await Promise.all([
         api.get("/products"),
         api.get("/discounts")
       ]);
-      setProducts(resP.data || []);
+      
+      // ✅ CORRECCIÓN: Maneja la estructura con paginación
+      const productsData = resP.data.products || resP.data;
+      setProducts(Array.isArray(productsData) ? productsData : []);
       setDiscounts(resD.data || []);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) { 
+      console.error("Error cargando descuentos:", e);
+      showNotice("Error al cargar descuentos", "error");
+    } finally { 
+      setLoading(false);
+      setTimeout(stopLoading, 600);
+    }
   };
 
   const handleEditClick = (d) => {
@@ -61,18 +72,51 @@ export default function Discounts() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    startLoading();
     try {
       const finalTargets = form.target_type === "product" 
         ? selectedIds.map(id => ({ target_type: "product", target_id: id.toString() }))
         : [{ target_type: "category", target_id: form.category_name }];
 
       const payload = { ...form, targets: finalTargets };
-      if (editingId) await api.put(`/discounts/${editingId}`, payload);
-      else await api.post("/discounts", payload);
+      
+      if (editingId) {
+        await api.put(`/discounts/${editingId}`, payload);
+        showNotice("Descuento actualizado", "success");
+      } else {
+        await api.post("/discounts", payload);
+        showNotice("Descuento creado con éxito", "success");
+      }
       
       setShowModal(false);
       loadData();
-    } catch (err) { alert("Error al guardar"); }
+    } catch (err) { 
+      console.error("Error al guardar:", err);
+      showNotice("Error al guardar el descuento", "error");
+    } finally {
+      stopLoading();
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const confirmed = await askConfirmation(
+      "¿Eliminar descuento?",
+      "Esta acción no se puede deshacer."
+    );
+
+    if (!confirmed) return;
+
+    startLoading();
+    try {
+      await api.delete(`/discounts/${id}`);
+      showNotice("Descuento eliminado", "success");
+      loadData();
+    } catch (err) {
+      console.error("Error al eliminar:", err);
+      showNotice("Error al eliminar el descuento", "error");
+    } finally {
+      stopLoading();
+    }
   };
 
   return (
@@ -86,16 +130,14 @@ export default function Discounts() {
             <h2 className="text-4xl font-bold tracking-tight text-slate-900">Ofertas</h2>
             <p className="text-slate-500 mt-1 font-medium">Gestiona tus campañas activas</p>
           </div>
-          {/* Verificar permiso de creación de descuentos */}
-          {permissions.includes('discount.create') && (
-            <button 
-              onClick={handleOpenCreate} 
-              className="group flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-600 transition-all duration-300 shadow-xl shadow-slate-200 active:scale-95"
-            >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-              <span className="font-semibold text-sm">Crear</span>
-            </button>
-          )}
+          
+          <button 
+            onClick={handleOpenCreate} 
+            className="group flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-600 transition-all duration-300 shadow-xl shadow-slate-200 active:scale-95"
+          >
+            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+            <span className="font-semibold text-sm">Crear</span>
+          </button>
         </div>
 
         {loading ? (
@@ -137,22 +179,20 @@ export default function Discounts() {
                     </div>
                   </div>
                   
-
                   <div className="flex flex-col items-end gap-3">
                     <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${d.type === 'percentage' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
                       {d.type === 'percentage' ? `-${d.value}%` : `-$${d.value}`}
                     </span>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      {/* Verificar permisos de editar y eliminar descuentos */}
-                      {permissions.includes('discount.update') && (
-                        <button onClick={() => handleEditClick(d)} className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><Edit3 size={18}/></button>
-                      )}
-                      {permissions.includes('discount.delete') && (
-                        <button 
-                          onClick={async () => { if(confirm("¿Eliminar este descuento?")) { await api.delete(`/discounts/${d.id}`); loadData(); } }}
-                          className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        ><Trash2 size={18}/></button>
-                      )}
+                      <button onClick={() => handleEditClick(d)} className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
+                        <Edit3 size={18}/>
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(d.id)}
+                        className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      >
+                        <Trash2 size={18}/>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -171,7 +211,9 @@ export default function Discounts() {
                 <h3 className="text-2xl font-bold text-slate-900">{editingId ? 'Editar Oferta' : 'Nueva Oferta'}</h3>
                 <p className="text-slate-500 text-sm">Configura los parámetros de tu descuento</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-colors"><X size={20}/></button>
+              <button onClick={() => setShowModal(false)} className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-colors">
+                <X size={20}/>
+              </button>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">

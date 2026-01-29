@@ -36,8 +36,15 @@ export default function Finance() {
   });
 
   const initialForm = {
-    type: "gasto", category: "", description: "", amount: "",
-    product_id: "", provider_id: "", quantity: 1, is_credit: false
+    type: "gasto", 
+    category: "", 
+    description: "", 
+    amount: "",
+    product_id: "", 
+    provider_id: "", 
+    quantity: 1, 
+    utility_type: "percentage",
+    utility_value: 30
   };
   const [form, setForm] = useState(initialForm);
 
@@ -53,10 +60,12 @@ export default function Finance() {
         api.get("/providers")
       ]);
       
-      
       const salesArr = salesRes.data || [];
       const expensesArr = expRes.data || [];
-      const productsArr = prodRes.data || [];
+      
+      // ✅ CORRECCIÓN: Maneja tanto array directo como objeto con products
+      const productsData = prodRes.data.products || prodRes.data;
+      const productsArr = Array.isArray(productsData) ? productsData : [];
       
       setProducts(productsArr);
       setProviders(provRes.data || []);
@@ -98,9 +107,10 @@ export default function Finance() {
             purchase_price: Number(p.purchase_price)
         }));
 
-        setComparisonProvidersData(lastPurchases);
+      setComparisonProvidersData(lastPurchases);
 
     } catch (error) {
+      console.error("Error cargando finanzas:", error);
       showNotice("Error cargando finanzas", "error");
     } finally {
       setTimeout(stopLoading, 600);
@@ -128,6 +138,8 @@ export default function Finance() {
         ...form,
         amount: Number(form.amount),
         quantity: Number(form.quantity),
+        utility_type: form.type === 'compra' ? form.utility_type : null,
+        utility_value: form.type === 'compra' ? Number(form.utility_value) : null,
         category: form.type === 'compra' 
           ? `Compra: ${products.find(p => p.id == form.product_id)?.name || 'Producto'}` 
           : form.category
@@ -139,6 +151,7 @@ export default function Finance() {
       setForm(initialForm);
       loadFinance();
     } catch (error) {
+      console.error("Error al registrar:", error);
       showNotice(error.response?.data?.error || "Error al registrar", "error");
     } finally {
       setIsSaving(false);
@@ -197,7 +210,7 @@ export default function Finance() {
           </div>
 
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-            {filteredExpenses.map((e) => (
+            {filteredExpenses.length > 0 ? filteredExpenses.map((e) => (
               <div key={e.id} className="flex justify-between items-center p-5 bg-slate-50/50 rounded-[2rem] hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all border border-transparent hover:border-slate-100 cursor-pointer group">
                 <div className="flex items-center gap-5">
                   <div className={`p-4 rounded-2xl shadow-sm bg-white ${e.type === 'gasto' ? 'text-red-500' : 'text-amber-500'}`}>
@@ -217,7 +230,11 @@ export default function Finance() {
                   <span className="text-[8px] px-2 py-0.5 bg-slate-100 rounded text-slate-500 font-black uppercase">{e.type}</span>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center py-20 text-slate-400">
+                <p className="font-bold">No hay registros</p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -301,6 +318,26 @@ export default function Finance() {
                     <option value="">¿Qué producto compraste?</option>
                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
+                  
+                  {/* Configuración de Utilidad */}
+                  <div className="bg-blue-50 p-4 rounded-2xl space-y-3">
+                    <p className="text-xs font-black text-blue-600 uppercase">Configurar Precio de Venta</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setForm({...form, utility_type: 'percentage'})} className={`flex-1 py-2 rounded-xl text-xs font-bold ${form.utility_type === 'percentage' ? 'bg-blue-600 text-white' : 'bg-white text-slate-400'}`}>
+                        % Porcentaje
+                      </button>
+                      <button type="button" onClick={() => setForm({...form, utility_type: 'fixed'})} className={`flex-1 py-2 rounded-xl text-xs font-bold ${form.utility_type === 'fixed' ? 'bg-blue-600 text-white' : 'bg-white text-slate-400'}`}>
+                        $ Fijo
+                      </button>
+                    </div>
+                    <input 
+                      type="number" 
+                      placeholder={form.utility_type === 'percentage' ? "Ej: 30 (%)" : "Ej: 5000 ($)"} 
+                      className="w-full p-3 bg-white rounded-xl outline-none font-bold text-sm"
+                      value={form.utility_value}
+                      onChange={e => setForm({...form, utility_value: e.target.value})}
+                    />
+                  </div>
                 </div>
               ) : (
                 <input type="text" placeholder="Categoría (Ej: Servicios, Arriendo)" className="w-full p-5 bg-slate-50 rounded-2xl outline-none font-bold text-sm" value={form.category} onChange={e => setForm({...form, category: e.target.value})} required />

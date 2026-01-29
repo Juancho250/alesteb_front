@@ -4,19 +4,16 @@ import {
   ShoppingCart, Plus, Minus, History, 
   Search, User, CreditCard, CheckCircle2, X, Loader2 
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext"; 
 
 import api from "../services/api";
 import Header from "../components/Header";
 import BottomNav from "../components/BottomNav";
 import { useLoading } from "../context/LoadingContext";
-// 1. IMPORTAR EL CONTEXTO DE AVISOS
 import { useNotice } from "../context/NoticeContext";
 
 export default function Sales() {
   const { startLoading, stopLoading } = useLoading();
-  const { showNotice, askConfirmation } = useNotice(); // Extraer funciones
-  const { can } = useAuth(); 
+  const { showNotice } = useNotice(); 
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]); 
   const [cart, setCart] = useState([]);
@@ -28,20 +25,25 @@ export default function Sales() {
   
   const navigate = useNavigate();
 
+  // CARGA DE DATOS SIN RESTRICCIONES
   const loadData = async () => {
     startLoading();
     try {
-      const requests = [api.get("/products")];
-      if (can('user.read')) {
-        requests.push(api.get("/users"));
-      }
-      const responses = await Promise.all(requests);
-      setProducts(responses[0].data);
-      if (responses[1]) {
-        setUsers(responses[1].data);
-      }
+      const [productsRes, usersRes] = await Promise.all([
+        api.get("/products"),
+        api.get("/users")
+      ]);
+
+      // ✅ CORRECCIÓN: Accede a .products si existe, sino usa el data directamente
+      const productsData = productsRes.data.products || productsRes.data;
+      const usersData = usersRes.data;
+
+      setProducts(Array.isArray(productsData) ? productsData : []);
+      setUsers(Array.isArray(usersData) ? usersData : []);
+
     } catch (err) {
-      showNotice("Error al cargar productos", "error");
+      console.error("Error cargando datos de venta:", err);
+      showNotice("Error al sincronizar catálogo y clientes", "error");
     } finally {
       setTimeout(stopLoading, 800);
     }
@@ -55,7 +57,6 @@ export default function Sales() {
       setCart(cart.map((p) => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p));
     } else {
       setCart([...cart, { ...product, quantity: 1 }]);
-      // Alerta eliminada para mayor fluidez
     }
   };
 
@@ -64,12 +65,12 @@ export default function Sales() {
       .filter((p) => p.quantity > 0));
   };
 
-  const total = cart.reduce((sum, p) => sum + p.price * p.quantity, 0);
+  const total = cart.reduce((sum, p) => sum + Number(p.price) * p.quantity, 0);
 
-  // 2. LÓGICA DE PAGO ACTUALIZADA CON AVISOS
+  // LÓGICA DE PAGO SIMPLIFICADA
   const handleCheckout = async () => {
-    if (!can('sale.create')) return showNotice("No tienes permiso para vender", "error");
     if (!selectedClient) return showNotice("Selecciona un cliente primero", "warning");
+    if (cart.length === 0) return showNotice("El carrito está vacío", "warning");
 
     setIsSaving(true);
     startLoading();
@@ -88,10 +89,12 @@ export default function Sales() {
 
       await api.post("/sales", saleData);
       
-      showNotice("Venta realizada con éxito", "success");
+      showNotice("¡Venta completada!", "success");
       setCart([]);
       setSelectedClient(null);
       setIsModalOpen(false);
+      // Recargar productos por si bajó el stock
+      loadData(); 
     } catch (err) {
       const errorMsg = err.response?.data?.message || "Error al procesar la venta";
       showNotice(errorMsg, "error");
@@ -105,185 +108,181 @@ export default function Sales() {
     u.name?.toLowerCase().includes(clientSearch.toLowerCase()) || 
     u.cedula?.includes(clientSearch)
   );
+
+  const filteredProducts = products.filter(p => 
+    p.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   
   return (
-    <div className="pb-24 bg-gray-50 min-h-screen">
+    <div className="pb-24 bg-[#F8FAFC] min-h-screen">
       <Header />
       
-      <main className="p-4 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <main className="p-4 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* SECCIÓN PRODUCTOS */}
-        <div className="lg:col-span-2">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Catálogo</h2>
-            <div className="relative w-1/2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        {/* --- SECCIÓN 1: RESÚMENES (Catálogo) --- */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-black italic tracking-tighter uppercase">Productos</h2>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
               <input 
                 type="text" 
-                placeholder="Buscar producto..." 
-                className="w-full pl-10 pr-4 py-2 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-500"
+                placeholder="Filtrar catálogo..." 
+                className="w-full pl-9 pr-4 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {products
-              .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-              .map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  className="group p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-blue-500 hover:shadow-md transition-all text-left"
-                >
-                  <div className="w-full h-32 bg-gray-100 rounded-xl mb-3 overflow-hidden">
-                    {p.image_url || p.main_image ? (
-                      <img 
-                        src={p.main_image || p.image_url}
-                        alt={p.name} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => { e.target.src = "https://via.placeholder.com/150?text=Sin+Imagen"; }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-2xl">
-                        {p.name[0]}
-                      </div>
-                    )}
+            {filteredProducts.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => addToCart(p)}
+                className="group p-3 bg-white rounded-3xl border border-slate-100 hover:border-blue-400 hover:shadow-xl hover:shadow-blue-500/5 transition-all text-left relative overflow-hidden"
+              >
+                <div className="aspect-square bg-slate-50 rounded-2xl mb-3 overflow-hidden relative">
+                  {p.main_image ? (
+                    <img src={p.main_image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-200 font-black text-4xl">{p.name[0]}</div>
+                  )}
+                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-black shadow-sm">
+                    Stock: {p.stock}
                   </div>
-                  <p className="font-bold text-gray-800 truncate text-sm">{p.name}</p>
-                  <p className="text-blue-600 font-black">${Number(p.price).toLocaleString()}</p>
-                </button>
-              ))}
+                </div>
+                <p className="font-bold text-slate-800 truncate text-xs px-1">{p.name}</p>
+                <p className="text-blue-600 font-black text-lg px-1">${Number(p.price).toLocaleString()}</p>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* SECCIÓN RESUMEN (CARRITO) */}
+        {/* --- SECCIÓN 2: REGISTROS (Carrito) --- */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-[2rem] shadow-xl p-6 sticky top-24 border border-gray-100">
+          <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 p-6 sticky top-24 border border-slate-50">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <ShoppingCart className="text-blue-600" /> Resumen
+              <h2 className="text-lg font-black italic tracking-tighter uppercase flex items-center gap-2">
+                <ShoppingCart className="text-blue-600" size={20} /> Carrito
               </h2>
-              {/* BOTÓN HISTORIAL - Requiere sale.read */}
-              {can('sale.read') && (
-                <button 
-                  onClick={() => navigate("/history")} 
-                  className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-blue-600 transition"
-                  title="Ver Historial"
-                >
-                  <History size={20} />
-                </button>
-              )}
+              <button onClick={() => navigate("/history")} className="p-2 bg-slate-50 rounded-xl text-slate-400 hover:text-blue-600 transition">
+                <History size={18} />
+              </button>
             </div>
 
-            <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 mb-6">
+            <div className="space-y-4 max-h-[45vh] overflow-y-auto pr-2 mb-6 custom-scrollbar">
               {cart.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-gray-400 text-sm">No hay productos seleccionados</p>
-                </div>
+                <div className="text-center py-10 opacity-30 italic font-bold text-sm">Carrito vacío</div>
               ) : cart.map((item) => (
-                <div key={item.id} className="flex justify-between items-center group">
-                  <div>
-                    <p className="text-sm font-bold text-gray-800">{item.name}</p>
-                    <p className="text-xs text-gray-400">${item.price} x {item.quantity}</p>
+                <div key={item.id} className="flex justify-between items-center group bg-slate-50/50 p-3 rounded-2xl border border-transparent hover:border-slate-100">
+                  <div className="max-w-[140px]">
+                    <p className="text-xs font-bold text-slate-800 truncate">{item.name}</p>
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-tighter">${Number(item.price).toLocaleString()}</p>
                   </div>
-                  <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg">
-                    <button onClick={() => updateQty(item.id, -1)} className="p-1 hover:bg-white rounded-md text-gray-500"><Minus size={14} /></button>
-                    <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQty(item.id, 1)} className="p-1 hover:bg-white rounded-md text-blue-600"><Plus size={14} /></button>
+                  <div className="flex items-center gap-3 bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                    <button onClick={() => updateQty(item.id, -1)} className="p-1 text-slate-400 hover:text-red-500"><Minus size={12} /></button>
+                    <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
+                    <button onClick={() => updateQty(item.id, 1)} className="p-1 text-blue-600"><Plus size={12} /></button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="border-t pt-4">
+            <div className="border-t border-slate-100 pt-6">
               <div className="flex justify-between items-end mb-6">
-                <span className="text-gray-400 font-medium">Total a pagar</span>
-                <span className="text-2xl font-black text-gray-900">${total.toLocaleString()}</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
+                <span className="text-3xl font-black text-slate-900 tracking-tighter">${total.toLocaleString()}</span>
               </div>
 
               <button
                 onClick={() => setIsModalOpen(true)}
-                disabled={cart.length === 0 || !can('sale.create')} 
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
+                disabled={cart.length === 0}
+                className="w-full bg-slate-900 hover:bg-black disabled:bg-slate-100 disabled:text-slate-300 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
               >
-                {can('sale.create') ? "Continuar con la Venta" : "Sin permisos de venta"}
+                Continuar Venta
               </button>
             </div>
           </div>
         </div>
       </main>
 
-      {/* MODAL DE FINALIZACIÓN */}
+      {/* --- SECCIÓN 3: GRÁFICAS (No hay en este componente, pero el Modal actúa como resumen final) --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-black text-gray-800">Finalizar Venta</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 bg-gray-100 rounded-full"><X size={20}/></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
+          <div className="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-black italic tracking-tighter uppercase text-slate-800">Cerrar Orden</h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 bg-slate-100 rounded-full text-slate-400"><X size={20}/></button>
             </div>
 
-            <div className="mb-6">
-              <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1">Seleccionar Cliente</label>
+            <div className="mb-6 space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Cliente Responsable</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                 <input 
                   type="text" 
-                  placeholder={can('user.read') ? "Nombre o Cédula..." : "No tienes permiso para buscar clientes"} 
-                  disabled={!can('user.read')}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  placeholder="Buscar por nombre o cédula..." 
+                  className="w-full pl-11 pr-4 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 font-bold text-sm"
                   value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
+                  onChange={(e) => {
+                    setClientSearch(e.target.value);
+                    if(selectedClient) setSelectedClient(null);
+                  }}
                 />
               </div>
 
-              {clientSearch.length > 0 && !selectedClient && can('user.read') && (
-                <div className="mt-2 max-h-40 overflow-y-auto border rounded-xl bg-white shadow-lg">
-                  {filteredUsers.map(u => (
+              {clientSearch.length > 0 && !selectedClient && (
+                <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-2xl bg-white shadow-xl custom-scrollbar">
+                  {filteredUsers.length > 0 ? filteredUsers.map(u => (
                     <button 
                       key={u.id}
-                      onClick={() => { setSelectedClient(u); setClientSearch(""); }}
-                      className="w-full text-left p-3 hover:bg-blue-50 border-b last:border-0 flex justify-between"
+                      onClick={() => { setSelectedClient(u); setClientSearch(u.name); }}
+                      className="w-full text-left p-4 hover:bg-slate-50 border-b border-slate-50 last:border-0 flex justify-between items-center transition-colors"
                     >
-                      <span className="font-bold text-sm text-gray-700">{u.name}</span>
-                      <span className="text-xs text-gray-400">{u.cedula}</span>
+                      <div>
+                        <p className="font-black text-slate-800 text-sm">{u.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{u.cedula}</p>
+                      </div>
+                      <Plus size={16} className="text-blue-500" />
                     </button>
-                  ))}
+                  )) : (
+                    <p className="p-4 text-center text-xs font-bold text-slate-300 italic">No se encontraron resultados</p>
+                  )}
                 </div>
               )}
             </div>
 
             {selectedClient && (
-              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-600 text-white rounded-lg"><User size={20}/></div>
+              <div className="bg-blue-600 p-5 rounded-[2rem] text-white flex items-center justify-between mb-8 shadow-lg shadow-blue-500/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center"><User size={24}/></div>
                   <div>
-                    <p className="font-bold text-blue-900 text-sm">{selectedClient.name}</p>
-                    <p className="text-xs text-blue-600 flex items-center gap-1"><CreditCard size={12}/> {selectedClient.cedula}</p>
+                    <p className="font-black tracking-tighter">{selectedClient.name}</p>
+                    <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">{selectedClient.cedula}</p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedClient(null)} className="text-blue-400 hover:text-red-500"><X size={18}/></button>
+                <button onClick={() => {setSelectedClient(null); setClientSearch("");}} className="text-white/50 hover:text-white"><X size={18}/></button>
               </div>
             )}
 
-            <div className="bg-gray-50 p-4 rounded-2xl mb-8">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-500">Total productos</span>
-                <span className="font-bold">{cart.length}</span>
+            <div className="bg-slate-50 p-6 rounded-[2rem] mb-8 space-y-2 border border-slate-100">
+              <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-tighter">
+                <span>Items</span>
+                <span>{cart.length}</span>
               </div>
-              <div className="flex justify-between text-lg">
-                <span className="font-black text-gray-800">Total</span>
-                <span className="font-black text-blue-600">${total.toLocaleString()}</span>
+              <div className="flex justify-between items-center">
+                <span className="font-black italic tracking-tighter uppercase text-slate-800">Total Neto</span>
+                <span className="font-black text-2xl text-blue-600 tracking-tighter">${total.toLocaleString()}</span>
               </div>
             </div>
 
             <button
               onClick={handleCheckout}
               disabled={isSaving || !selectedClient}
-              className="w-full py-4 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all"
+              className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-100 disabled:text-slate-300 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/10 transition-all flex items-center justify-center gap-3"
             >
-              {isSaving ? <Loader2 className="animate-spin" /> : <CheckCircle2 size={20} />}
-              {isSaving ? "Procesando..." : "Confirmar Pago"}
+              {isSaving ? <Loader2 className="animate-spin" /> : <CheckCircle2 size={18} />}
+              {isSaving ? "Procesando..." : "Confirmar y Cobrar"}
             </button>
           </div>
         </div>

@@ -8,66 +8,60 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Al recargar la página, recuperamos la sesión si existe
     const storedUser = localStorage.getItem("user");
     const token = localStorage.getItem("token");
 
     if (storedUser && token) {
       try {
-        // Solo hacer el parse si el usuario existe en localStorage
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
-        // Configurar el token en axios para futuras peticiones
+        // ✅ Configurar el header de autorización al cargar
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       } catch (error) {
-        console.error("Error al parsear el usuario almacenado", error);
+        console.error("Error al recuperar sesión", error);
+        // Si hay error, limpiamos todo
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       }
     }
     setLoading(false);
   }, []);
 
-
+  // ✅ Login con email y password (para panel admin)
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
-    
-    // Asumimos que el backend devuelve: { token, user: { id, roles, permissions: [...] } }
     const { token, user: userData } = res.data;
 
-    // 1. Guardar en LocalStorage
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(userData));
-
-    // 2. Configurar Axios globalmente
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-    // 3. Actualizar estado
+    
     setUser(userData);
-
-    return userData; // Retornamos para que el Login sepa que tuvo éxito
+    return userData;
   };
 
+  // ✅ Login directo con user y token (para página pública después de registro)
+  const loginWithToken = (userData, token) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(userData));
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    
+    setUser(userData);
+    return userData;
+  };
 
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
-    window.location.href = "/login"; // Redirección forzada
+    window.location.href = "/login";
   };
 
-  // Función poderosa para verificar permisos en cualquier parte de la App
-  // Uso: can('users.create') -> true/false
-  const can = (permissionSlug) => {
-    if (!user) return false;
-    // Si es super admin, tiene acceso a todo
-    if (user.roles?.includes("super_admin")) return true;
-    // Verificar si tiene el permiso específico
-    return user.permissions?.includes(permissionSlug);
-  };
-
+  const isAdmin = user?.role === "admin" || user?.role_id === 1;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, can, loading }}>
+    <AuthContext.Provider value={{ user, login, loginWithToken, logout, isAdmin, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
